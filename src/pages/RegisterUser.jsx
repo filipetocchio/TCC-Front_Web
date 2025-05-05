@@ -117,7 +117,7 @@ const RegisterUser = () => {
 
           <button
             type="submit"
-            className="w-full py-2 text-black bg-yellow-200 hover:bg-yellow-200 rounded-md transition duration-200 font-semibold"
+            className="w-full py-2 text-white bg-black hover:bg-yellow-200 rounded-md transition duration-200 font-semibold"
           >
             Cadastrar
           </button>
@@ -125,7 +125,7 @@ const RegisterUser = () => {
 
         <p className="mt-4 text-center text-text-on-gold">
           Já tem uma conta?{' '}
-          <a href="/login" className="underline hover:text-black transition duration-200">
+          <a href="/login" className="underline hover:text-w transition duration-200">
             Faça login
           </a>
         </p>
