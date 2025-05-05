@@ -1,0 +1,20 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import Home from './pages/Home';
+import RegisterProperty from './pages/RegisterProperty';
+import RegisterUser from './pages/RegisterUser';
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/RegistrarPropriedade" element={<RegisterProperty />} />
+        <Route path="/Cadastro" element={<RegisterUser />} />
+        
+      </Routes>
+    </Router>
+  );
+}
