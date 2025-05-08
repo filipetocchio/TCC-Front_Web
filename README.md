@@ -4,7 +4,7 @@ TCC-Front_Web
 
 ### 1. Clone o repositório
 
-```bash
+
 git clone https://github.com/filipetocchio/TCC-Front_Web.git
 cd TCC-Front_Web
 
