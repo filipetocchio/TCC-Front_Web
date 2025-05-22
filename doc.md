@@ -139,7 +139,7 @@ TCC-Front_Web-main/
 git clone <URL-do-repositório>
 
 # Entrar na pasta
-cd TCC-Front_Web-main
+cd TCC-Front_Web
 
 # Instalar dependências
 npm install
