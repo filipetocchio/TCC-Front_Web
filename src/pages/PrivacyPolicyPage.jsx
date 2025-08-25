@@ -117,10 +117,7 @@ const PrivacyPolicyPage = () => (
         Podemos atualizar esta Política de Privacidade periodicamente. Quando o fizermos, a data da &quot;Última atualização&quot; no topo da página será alterada. Recomendamos que você revise esta página regularmente.
       </p>
 
-      <div className="mt-10 p-4 bg-red-50 border-l-4 border-red-400 text-red-700">
-        <p className="font-bold">Aviso Legal</p>
-        <p>Este documento é um modelo elaborado para fins acadêmicos do projeto TCC e reflete as funcionalidades do sistema Qota. Ele não constitui aconselhamento jurídico. Para garantir total conformidade legal, recomenda-se a consulta a um profissional de direito.</p>
-      </div>
+
 
       <div className="text-center mt-8">
         <Link to="/cadastro" className="text-yellow-500 hover:underline">Voltar para o Cadastro</Link>
