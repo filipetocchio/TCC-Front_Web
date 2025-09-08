@@ -1,18 +1,29 @@
+/**
+ * @file PropertyDetails.jsx
+ * @description Componente de página que exibe os detalhes completos de uma propriedade,
+ * incluindo informações gerais, galeria de fotos e o módulo de gestão de inventário.
+ * Atua como o hub central para todas as ações relacionadas a uma propriedade específica.
+ */
+import React, { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+
 import { AuthContext } from '../context/AuthContext';
+import paths from '../routes/paths';
+
 import Sidebar from '../components/layout/Sidebar';
 import InventoryModal from '../components/inventory/InventoryModal';
 import InventoryGalleryModal from '../components/inventory/InventoryGalleryModal';
+import Dialog from '../components/ui/dialog';
+
 import {
   HomeIcon, Building2, MapPin, Archive, FileText, Calendar, Users,
   DollarSign, Pencil, Trash2, Image as ImageIcon, PlusCircle, X
 } from 'lucide-react';
 
-// --- Constantes ---
+// --- Constantes de Configuração ---
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 const API_BASE_URL = API_URL.replace('/api/v1', '');
 
@@ -23,7 +34,6 @@ const ICON_MAP = {
   Lote: <Archive className="inline-block mr-1" size={18} />,
   Outros: <HomeIcon className="inline-block mr-1" size={18} />,
 };
-
 
 // --- Componente Principal ---
 const PropertyDetails = () => {
@@ -45,28 +55,43 @@ const PropertyDetails = () => {
   const [inventoryFormData, setInventoryFormData] = useState({});
   const [showDeleteItemDialog, setShowDeleteItemDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [galleryItem, setGalleryItem] = useState(null); // Estado para controlar a galeria
+  const [galleryItem, setGalleryItem] = useState(null);
+
+  /**
+   * @function fetchData
+   * @description Busca os dados da propriedade e do inventário de forma concorrente.
+   * Utiliza `Promise.all` para otimizar o carregamento dos dados da página.
+   * Memoizada com `useCallback` para estabilidade referencial.
+   */
+  const fetchData = useCallback(async () => {
+    const accessToken = token || localStorage.getItem('accessToken');
+    try {
+      const [propertyResponse, inventoryResponse] = await Promise.all([
+        axios.get(`${API_URL}/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } }),
+        axios.get(`${API_URL}/inventory/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      ]);
+      setProperty(propertyResponse.data.data);
+      setPropertyFormData(propertyResponse.data.data);
+      setInventory(inventoryResponse.data.data);
+    } catch (error) {
+      toast.error('Não foi possível carregar os dados da propriedade.');
+      console.error('Erro ao buscar dados da página:', error);
+    }
+  }, [propertyId, token]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const accessToken = token || localStorage.getItem('accessToken');
-      try {
-        const [propertyResponse, inventoryResponse] = await Promise.all([
-          axios.get(`${API_URL}/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } }),
-          axios.get(`${API_URL}/inventory/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } })
-        ]);
-        setProperty(propertyResponse.data.data);
-        setPropertyFormData(propertyResponse.data.data);
-        setInventory(inventoryResponse.data.data);
-      } catch (error) {
-        toast.error('Não foi possível carregar os dados da propriedade.');
-        console.error('Erro ao buscar dados da página:', error);
-      }
-    };
     fetchData();
-  }, [propertyId, token]);
+  }, [fetchData]);
   
-  const isOwnerMaster = property?.usuarios?.some(u => u.id === usuario?.id && u.permissao === 'proprietario_master');
+  /**
+   * @property {boolean} isOwnerMaster
+   * @description Estado derivado e memoizado que verifica se o usuário logado é um
+   * proprietário master da propriedade atual. `useMemo` otimiza o cálculo.
+   */
+  const isOwnerMaster = useMemo(() => {
+    // A verificação agora aponta para 'm.usuario.id', corrigindo o bug.
+    return property?.usuarios?.some(m => m.usuario?.id === usuario?.id && m.permissao === 'proprietario_master');
+  }, [property, usuario]);
 
   // --- Manipuladores de Eventos da Propriedade ---
   const handlePropertyFormChange = (e) => {
@@ -81,7 +106,7 @@ const PropertyDetails = () => {
       setProperty(response.data.data);
       setEditingProperty(false);
       toast.success('Propriedade atualizada com sucesso!', { id: loadingToast });
-    } catch  {
+    } catch (error) {
       toast.error('Erro ao atualizar a propriedade.', { id: loadingToast });
     }
   };
@@ -92,7 +117,7 @@ const PropertyDetails = () => {
       await axios.delete(`${API_URL}/property/${propertyId}`, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Propriedade excluída com sucesso.', { id: loadingToast });
       navigate('/home');
-    } catch  {
+    } catch (error) {
       toast.error('Erro ao excluir a propriedade.', { id: loadingToast });
     }
   };
@@ -158,7 +183,7 @@ const PropertyDetails = () => {
       setShowDeleteItemDialog(false);
       setItemToDelete(null);
       toast.success('Item excluído com sucesso.', { id: loadingToast });
-    } catch  {
+    } catch (error) {
       toast.error('Erro ao excluir o item.', { id: loadingToast });
     }
   };
@@ -176,7 +201,7 @@ const PropertyDetails = () => {
         })
       );
       toast.success('Foto excluída!', { id: loadingToast });
-    } catch  {
+    } catch (error) {
       toast.error('Erro ao excluir foto.', { id: loadingToast });
     }
   };
@@ -202,7 +227,7 @@ const PropertyDetails = () => {
         })
       );
       toast.success('Fotos enviadas!', { id: loadingToast });
-    } catch  {
+    } catch (error) {
       toast.error('Erro ao enviar fotos.', { id: loadingToast });
     }
   };
@@ -215,7 +240,7 @@ const PropertyDetails = () => {
     <>
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar user={usuario} />
-        <main className="flex-1 p-6 ml-64">
+        <main className="flex-1 p-6 ml-0 md:ml-64">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">{ICON_MAP[property.tipo] ?? ICON_MAP['Outros']}{property.nomePropriedade}</h1>
@@ -223,11 +248,12 @@ const PropertyDetails = () => {
             </div>
             <div className="space-x-3 flex items-center">
               <ActionButton icon={<DollarSign size={16} />} text="Financeiro" />
-              
               <ActionButton icon={<Calendar size={16} />} text="Agenda" />
-              <ActionButton icon={<Users size={16} />} 
-              onClick={() => navigate(paths.gerenciarMembros.replace(':id', propertyId))}
-               />
+              <ActionButton
+                icon={<Users size={16} />}
+                text="Cotistas"
+                onClick={() => navigate(paths.gerenciarMembros.replace(':id', propertyId))}
+              />
             </div>
           </div>
 
@@ -270,7 +296,7 @@ const PropertyDetails = () => {
                   <div className="space-y-4">
                     <DetailItem label="Tipo" value={property.tipo} />
                     <DetailItem label="Valor estimado" value={`R$ ${Number(property.valorEstimado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                    <DetailItem label="Responsável" value={property.usuarios?.[0]?.nomeCompleto ?? 'Não informado'} />
+                    <DetailItem label="Responsável" value={property.usuarios?.[0]?.usuario.nomeCompleto ?? 'Não informado'} />
                   </div>
                   <div className="space-y-4">
                     <DetailItem label="Endereço Completo" value={`${property.enderecoLogradouro}, ${property.enderecoNumero}\n${property.enderecoBairro}, ${property.enderecoCidade}\nCEP: ${property.enderecoCep}`} />
@@ -327,11 +353,19 @@ const PropertyDetails = () => {
   );
 };
 
-
 // --- Componentes Auxiliares ---
 
-const ActionButton = ({ icon, text }) => (<button className="px-4 py-2 bg-yellow-300 rounded-xl text-black hover:bg-yellow-400 transition flex items-center">{icon}<span className="ml-2">{text}</span></button>);
-ActionButton.propTypes = { icon: PropTypes.node.isRequired, text: PropTypes.string.isRequired };
+const ActionButton = ({ icon, text, onClick }) => (
+  <button onClick={onClick} className="px-4 py-2 bg-yellow-300 rounded-xl text-black hover:bg-yellow-400 transition flex items-center">
+    {icon}
+    <span className="ml-2">{text}</span>
+  </button>
+);
+ActionButton.propTypes = {
+  icon: PropTypes.node.isRequired,
+  text: PropTypes.string.isRequired,
+  onClick: PropTypes.func,
+};
 
 const PropertyFormSection = ({ title, fields, formData, onChange }) => (
   <div>
@@ -351,20 +385,5 @@ PropertyFormSection.propTypes = { title: PropTypes.string.isRequired, fields: Pr
 const DetailItem = ({ label, value }) => (<div><p className="font-medium text-gray-800">{label}:</p><p className="text-gray-600 whitespace-pre-wrap">{value}</p></div>);
 DetailItem.propTypes = { label: PropTypes.string.isRequired, value: PropTypes.string.isRequired };
 
-const Dialog = ({ isOpen, onClose, title, children }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg text-black m-4">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold">{title}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-red-500 transition-colors"><X size={24} /></button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-};
-Dialog.propTypes = { isOpen: PropTypes.bool.isRequired, onClose: PropTypes.func.isRequired, title: PropTypes.string.isRequired, children: PropTypes.node.isRequired };
-
 export default PropertyDetails;
+

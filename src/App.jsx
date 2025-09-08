@@ -57,9 +57,7 @@ export default function App() {
           <Route path={paths.aceitarConvite} element={<AcceptInvitePage />} />
         </Routes>
 
-        {/* CORREÇÃO: O CookieConsent foi movido para DENTRO do Router.
-          Agora o <Link> dentro dele funcionará corretamente.
-        */}
+        
         <CookieConsent
           location="bottom"
           buttonText="Entendi e aceito"
