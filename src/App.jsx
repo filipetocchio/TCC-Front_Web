@@ -18,6 +18,9 @@ import PropertyDetails from './pages/PropertyDetails';
 // Páginas Legais (LGPD)
 import TermsPage from './pages/TermsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import PropertyMembersPage from './pages/PropertyMembersPage';
+import AcceptInvitePage from './pages/AcceptInvitePage';
+
 
 /**
  * Componente raiz que gerencia o estado de autenticação,
@@ -50,6 +53,8 @@ export default function App() {
           <Route path={paths.propriedade} element={<PropertyDetails />} />
           <Route path="/termos-de-uso" element={<TermsPage />} />
           <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
+          <Route path={paths.gerenciarMembros} element={<PropertyMembersPage />} />
+          <Route path={paths.aceitarConvite} element={<AcceptInvitePage />} />
         </Routes>
 
         {/* CORREÇÃO: O CookieConsent foi movido para DENTRO do Router.

@@ -225,7 +225,9 @@ const PropertyDetails = () => {
               <ActionButton icon={<DollarSign size={16} />} text="Financeiro" />
               
               <ActionButton icon={<Calendar size={16} />} text="Agenda" />
-              <ActionButton icon={<Users size={16} />} text="Cotistas" />
+              <ActionButton icon={<Users size={16} />} 
+              onClick={() => navigate(paths.gerenciarMembros.replace(':id', propertyId))}
+               />
             </div>
           </div>
 

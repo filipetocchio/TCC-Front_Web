@@ -4,7 +4,9 @@ const paths = {
   home: '/home',
   registrarPropriedade: '/RegistrarPropriedade',
   editarPerfil: '/editprofile',
-  propriedade: '/property/:id', 
+  propriedade: '/property/:id',
+  gerenciarMembros: '/property/:id/members',
+  aceitarConvite: '/convite/:token',
 };
 
 export default paths;
