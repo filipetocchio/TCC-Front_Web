@@ -4,6 +4,10 @@
  * incluindo informações gerais, galeria de fotos e o módulo de gestão de inventário.
  * Atua como o hub central para todas as ações relacionadas a uma propriedade específica.
  */
+
+// Todos direitos autorais reservados pelo QOTA.
+
+
 import React, { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -89,7 +93,7 @@ const PropertyDetails = () => {
    * proprietário master da propriedade atual. `useMemo` otimiza o cálculo.
    */
   const isOwnerMaster = useMemo(() => {
-    // A verificação agora aponta para 'm.usuario.id', corrigindo o bug.
+    // A verificação agora aponta para 'm.usuario.id'
     return property?.usuarios?.some(m => m.usuario?.id === usuario?.id && m.permissao === 'proprietario_master');
   }, [property, usuario]);
 

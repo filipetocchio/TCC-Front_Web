@@ -1,6 +1,10 @@
+// Todos direitos autorais reservados pelo QOTA.
+
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import PropTypes from 'prop-types'; // 1. Importar PropTypes
+import PropTypes from 'prop-types'; 
+
 
 /**
  * Componente auxiliar para padronizar os títulos das seções.

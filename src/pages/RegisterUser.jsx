@@ -1,3 +1,6 @@
+// Todos direitos autorais reservados pelo QOTA.
+
+
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom'; // 1. Importar o 'Link'
 import axios from 'axios';

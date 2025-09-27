@@ -4,6 +4,10 @@
  * Este componente gerencia o estado do formulário, a seleção de múltiplos arquivos
  * com pré-visualização, busca de CEP e o processo de submissão de dados para a API.
  */
+
+// Todos direitos autorais reservados pelo QOTA.
+
+
 import React, { useState, useContext, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';

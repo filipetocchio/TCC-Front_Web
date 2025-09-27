@@ -4,6 +4,9 @@
  * Permite que proprietários master alterem permissões e convidem novos usuários, com
  * diálogos de confirmação para ações críticas.
  */
+
+// Todos direitos autorais reservados pelo QOTA.
+
 import React, { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useParams, Link } from 'react-router-dom';
