@@ -1,9 +1,13 @@
+// Todos direitos autorais reservados pelo QOTA.
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 
 /**
- * Componente auxiliar para padronizar os títulos das seções.
+ * Renderiza um título h2 padronizado para as seções da página.
+ * A utilização deste componente garante consistência visual em toda a documentação.
+ * @param {{ number: string, title: string }} props - As propriedades do componente.
  */
 const SectionTitle = ({ number, title }) => (
   <h2 className="text-2xl font-semibold mt-8 mb-3 border-b pb-2">
@@ -17,7 +21,9 @@ SectionTitle.propTypes = {
 };
 
 /**
- * Componente auxiliar para itens de lista.
+ * Renderiza um item de lista (li) com estilização padrão.
+ * Simplifica a criação de listas, mantendo a formatação consistente.
+ * @param {{ children: React.ReactNode }} props - O conteúdo a ser renderizado dentro do item da lista.
  */
 const ListItem = ({ children }) => (
   <li className="mb-2 ml-4 list-disc">{children}</li>
@@ -27,6 +33,11 @@ ListItem.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
+/**
+ * Página de Termos de Uso.
+ * Apresenta os termos e condições legais para a utilização da plataforma Qota.
+ * Este componente é estático e focado em apresentar informações de forma clara e legível.
+ */
 const TermsPage = () => (
   <div className="bg-gray-50 min-h-screen">
     <div className="p-4 sm:p-8 max-w-4xl mx-auto bg-white shadow-md rounded-lg my-8 text-gray-800">
@@ -88,7 +99,6 @@ const TermsPage = () => (
           Não nos responsabilizamos por disputas, conflitos, perdas financeiras ou quaisquer outros problemas que surjam entre os usuários da plataforma.
         </ListItem>
         <ListItem>
-          {/* CORREÇÃO APLICADA AQUI */}
           O serviço é fornecido &quot;como está&quot; e &quot;conforme disponível&quot;, sem garantias de qualquer tipo de que funcionará ininterruptamente ou livre de erros.
         </ListItem>
       </ul>
@@ -102,9 +112,7 @@ const TermsPage = () => (
       <p className="text-gray-700 leading-relaxed">
         Você pode encerrar sua conta a qualquer momento através das configurações de perfil. Nós nos reservamos o direito de suspender ou encerrar sua conta se você violar estes Termos de Uso.
       </p>
-
       
-
       <div className="text-center mt-8">
         <Link to="/cadastro" className="text-yellow-500 hover:underline">Voltar para o Cadastro</Link>
       </div>

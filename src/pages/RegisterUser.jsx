@@ -107,7 +107,7 @@ const RegisterUser = () => {
             </div>
           </div>
 
-          {/* 5. NOVA SEÇÃO DE CONSENTIMENTO LGPD */}
+          {/* 5. SEÇÃO DE CONSENTIMENTO LGPD */}
           <div className="flex items-start space-x-3 pt-2">
             <input
               id="termos"
