@@ -1,3 +1,6 @@
+// Todos direitos autorais reservados pelo QOTA.
+
+
 const paths = {
   login: '/login',
   cadastro: '/cadastro',

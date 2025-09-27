@@ -3,6 +3,8 @@
  * @description Componente de modal para proprietários master convidarem novos membros para uma propriedade.
  * Gerencia o estado do formulário de convite e a exibição do link gerado.
  */
+// Todos direitos autorais reservados pelo QOTA.
+
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import axios from 'axios';

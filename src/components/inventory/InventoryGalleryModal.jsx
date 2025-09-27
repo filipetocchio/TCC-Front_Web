@@ -2,6 +2,9 @@
  * @file InventoryGalleryModal.jsx
  * @description Componente de lightbox/galeria para exibir as fotos de um item do inventário em tela cheia.
  */
+// Todos direitos autorais reservados pelo QOTA.
+
+
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';

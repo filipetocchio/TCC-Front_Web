@@ -1,4 +1,6 @@
 // src/utils/api.js
+// Todos direitos autorais reservados pelo QOTA.
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api';
 
 export const api = {

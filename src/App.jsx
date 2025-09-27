@@ -1,3 +1,6 @@
+// Todos direitos autorais reservados pelo QOTA.
+
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -42,7 +45,7 @@ export default function App() {
       />
       
       <Router>
-        {/* O conteúdo principal da aplicação, incluindo as rotas */}
+        
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path={paths.login} element={<LoginPage />} />

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Home, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 import axios from 'axios';
+// Todos direitos autorais reservados pelo QOTA.
 
 // Componente da Sidebar com suporte a colapso e carregamento de dados do usuário
 const Sidebar = () => {

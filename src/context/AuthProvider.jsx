@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { AuthContext } from './AuthContext';
+// Todos direitos autorais reservados pelo QOTA.
 
 /**
  * AuthProvider

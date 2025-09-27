@@ -2,6 +2,8 @@
  * @file Dialog.jsx
  * @description Componente de modal genérico e reutilizável para exibir alertas e formulários.
  */
+// Todos direitos autorais reservados pelo QOTA.
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import { X } from 'lucide-react';

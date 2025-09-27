@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+// Todos direitos autorais reservados pelo QOTA.
 
 /** @type {import('tailwindcss').Config} */
 /** @type {import('tailwindcss').Config} */

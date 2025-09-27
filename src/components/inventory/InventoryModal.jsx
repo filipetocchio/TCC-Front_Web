@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { X, UploadCloud, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+// Todos direitos autorais reservados pelo QOTA.
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1').replace('/api/v1', '');
 
@@ -31,7 +32,6 @@ const InventoryModal = ({
 
   if (!isOpen) return null;
 
-  // ============================ FUNÇÃO CORRIGIDA ============================
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
 
