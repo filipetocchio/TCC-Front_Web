@@ -2,6 +2,9 @@
  * @file AcceptInvitePage.jsx
  * @description Página pública onde um usuário pode visualizar e aceitar um convite para uma propriedade.
  */
+// Todos direitos autorais reservados pelo QOTA.
+
+
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';

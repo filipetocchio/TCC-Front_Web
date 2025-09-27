@@ -1,4 +1,5 @@
 // src/pages/EditProfile.jsx
+// Todos direitos autorais reservados pelo QOTA.
 
 import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -45,7 +46,7 @@ const EditProfile = () => {
           cpf: data.cpf || '',
           fotoPerfil: null,
         });
-        // Futuro uso: setPreviewUrl(data.urlFotoPerfil);
+       
       })
       .catch(() => {
         // Caso não consiga buscar, utiliza os dados do localStorage como fallback

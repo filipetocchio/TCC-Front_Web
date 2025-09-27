@@ -4,6 +4,9 @@
  * Garante que o componente renderize os estados corretos (loading, erro, sucesso)
  * com base na resposta da API.
  */
+
+// Todos direitos autorais reservados pelo QOTA.
+
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
