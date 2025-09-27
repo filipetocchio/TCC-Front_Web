@@ -1,10 +1,13 @@
+// Todos direitos autorais reservados pelo QOTA.
+
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import paths from '../../routes/paths';
 import { Mail, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
-import LoginImage from '../../assets/login.png'; // importa a imagem
-import SuaLogo from '../../assets/Ln QOTA Branca.png'; // <--- CAMINHO CORRIGIDO
+import LoginImage from '../../assets/login.png';
+import SuaLogo from '../../assets/Ln QOTA Branca.png'; 
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -42,9 +45,9 @@ const LoginForm = () => {
       {/* Formulário à esquerda - 30% */}
       <div className="w-full md:w-1/3 flex items-center justify-center bg-primary px-4">
         <div className="w-full max-w-md p-8 bg-gold-gradient-vertical rounded-2xl shadow-xl">
-          {/* 2. ADICIONE A TAG IMG PARA A LOGO AQUI */}
-          <div className="flex justify-center mb-0"> {/* Container para centralizar a logo e adicionar margem inferior */}
-            <img src={SuaLogo} alt="Logo QOTA" className="h-64" /> {/* Ajuste a classe 'h-16' para o tamanho desejado */}
+          
+          <div className="flex justify-center mb-0"> 
+            <img src={SuaLogo} alt="Logo QOTA" className="h-64" /> 
           </div>
 
           
