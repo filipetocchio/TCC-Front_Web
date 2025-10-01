@@ -11,7 +11,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 
 import { AuthContext } from '../context/AuthContext';
 import Sidebar from '../components/layout/Sidebar';
-import Dialog from '../components/ui/Dialog'; 
+import Dialog from '../components/ui/dialog'; 
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 
@@ -163,7 +163,7 @@ const EditProfile = () => {
     toast.promise(submissionPromise(), {
       loading: 'Atualizando perfil...',
       success: () => {
-        // Recarrega a página para refletir as alterações globalmente (ex: na sidebar)
+        // Recarrega a página para refletir as alterações globalmente (ex: na sidebar.)
         window.location.reload();
         return 'Perfil atualizado com sucesso!';
       },
