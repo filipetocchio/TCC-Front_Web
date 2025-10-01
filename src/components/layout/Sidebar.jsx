@@ -55,15 +55,24 @@ const Sidebar = () => {
           ☰
         </button>
 
-        {/* Perfil do usuário */}
-        <Link to="/editprofile" className="flex items-center p-4 hover:bg-secondary">
-          <img
-            src={user?.userPhoto?.url || 'https://www.w3schools.com/w3images/avatar2.png'}
-            alt="Foto de perfil do usuário"
-            className="w-16 h-16 rounded-full mr-2"
-          />
-          {!collapsed && <span className="font-medium">{user?.nomeCompleto || 'Usuário'}</span>}
-        </Link>
+       {/* Perfil do usuário */}
+      <Link
+        to="/editprofile"
+        className={clsx(
+          'flex items-center p-4 hover:bg-secondary transition-all duration-300',
+          collapsed && 'justify-center'
+        )}
+      >
+        <img
+          src={user?.userPhoto?.url || 'https://www.w3schools.com/w3images/avatar2.png'}
+          alt="Foto de perfil do usuário"
+          className={clsx(
+            'rounded-full object-cover transition-all duration-300 ease-in-out',
+            collapsed ? 'w-12 h-12' : 'w-16 h-16 mr-2'
+          )}
+        />
+        {!collapsed && <span className="font-medium">{user?.nomeCompleto || 'Usuário'}</span>}
+      </Link>
 
         <hr className="border-black my-2" />
 
