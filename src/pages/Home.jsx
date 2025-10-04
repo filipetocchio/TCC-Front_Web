@@ -1,22 +1,35 @@
-// Todos direitos autorais reservados pelo QOTA.
-
-import { useEffect, useState, useContext } from 'react';
+/**
+ * @file Home.jsx
+ * @description Página principal (Dashboard) da aplicação.
+ * Responsável por saudar o usuário, buscar e exibir a lista de suas propriedades
+ * de forma clara e organizada.
+ * @author QOTA
+ * @copyright 2025 QOTA. Todos os direitos autorais reservados.
+ */
+import React, { useEffect, useState, useContext, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import PropTypes from 'prop-types';
+import axios from 'axios';
 
 import Sidebar from '../components/layout/Sidebar';
 import paths from '../routes/paths';
-import { Home as HomeIcon, Building2, MapPin, Archive, AlertTriangle } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import logoQota from '../assets/Ln QOTA.png';
 
+import { 
+  Home as HomeIcon, 
+  Building2, 
+  MapPin, 
+  Archive, 
+  AlertTriangle, 
+  ShieldCheck, 
+  Shield 
+} from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8001/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 
 /**
- * Mapeia os tipos de propriedade para seus respectivos ícones,
- * melhorando a identificação visual na interface.
+ * Mapeia os tipos de propriedade para seus respectivos ícones.
  */
 const propertyIconMap = {
   Casa: <HomeIcon className="inline-block mr-2" size={16} />,
@@ -27,28 +40,50 @@ const propertyIconMap = {
 };
 
 /**
- * Componente que renderiza um card individual para cada propriedade.
- * @param {{ property: object, navigate: function }} props
+ * @component PermissionBadge
+ * @description Exibe um selo visual indicando a permissão do usuário na propriedade.
  */
-const PropertyCard = ({ property, navigate }) => (
+const PermissionBadge = ({ permission }) => {
+  const isMaster = permission === 'proprietario_master';
+  const Icon = isMaster ? ShieldCheck : Shield;
+  const text = isMaster ? 'Master' : 'Comum';
+  const color = isMaster ? 'text-gold' : 'text-gray-600';
+
+  return (
+    <div className={`flex items-center text-xs font-semibold ${color}`}>
+      <Icon size={14} className="mr-1" />
+      <span>{text}</span>
+    </div>
+  );
+};
+PermissionBadge.propTypes = {
+  permission: PropTypes.string.isRequired,
+};
+
+/**
+ * @component PropertyCard
+ * @description Renderiza um card individual para cada propriedade.
+ */
+const PropertyCard = ({ property, userPermission, navigate }) => (
   <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform transform hover:-translate-y-1 hover:shadow-xl">
     <img
       src={property.fotos[0]?.documento ? `http://localhost:8001${property.fotos[0].documento}` : '/placeholder.png'}
       alt={`Imagem da propriedade ${property.nomePropriedade}`}
-      className="w-full h-48 object-cover"
+      className="w-full h-40 object-cover"
     />
-    <div className="p-4 flex flex-col h-48">
-      <div className="flex-grow">
+    <div className="p-4 flex flex-col justify-between" style={{ height: '10rem' }}>
+      <div>
         <span className="text-gray-600 text-sm flex items-center mb-1">
           {propertyIconMap[property.tipo] || propertyIconMap['Outros']}
           {property.tipo}
         </span>
-        <h3 className="text-lg font-bold truncate">
+        <h3 className="text-lg font-bold truncate" title={property.nomePropriedade}>
           {property.nomePropriedade}
         </h3>
+        {userPermission && <PermissionBadge permission={userPermission} />}
       </div>
       <button
-        onClick={() => navigate(`/property/${property.id}`)}
+        onClick={() => navigate(paths.propriedade.replace(':id', property.id))}
         className="w-full mt-2 py-2 bg-yellow-400 text-black rounded-xl font-semibold hover:bg-yellow-500 transition-colors duration-300"
       >
         Gerenciar
@@ -58,57 +93,39 @@ const PropertyCard = ({ property, navigate }) => (
 );
 
 PropertyCard.propTypes = {
-  property: PropTypes.shape({
-    id: PropTypes.any.isRequired,
-    nomePropriedade: PropTypes.string.isRequired,
-    tipo: PropTypes.string.isRequired,
-    fotos: PropTypes.arrayOf(PropTypes.shape({
-      documento: PropTypes.string
-    }))
-  }).isRequired,
-  navigate: PropTypes.func.isRequired
+  property: PropTypes.object.isRequired,
+  userPermission: PropTypes.string,
+  navigate: PropTypes.func.isRequired,
 };
 
-/**
- * Página principal (Dashboard) da aplicação.
- * Responsável por saudar o usuário, buscar e exibir a lista de suas propriedades.
- */
 const Home = () => {
   const navigate = useNavigate();
   const { usuario, token } = useContext(AuthContext);
 
-  const [user, setUser] = useState(null);
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   /**
-   * Efeito para garantir a autenticação do usuário.
-   * Busca dados do contexto ou do localStorage e redireciona para o login se não encontrar.
+   * @property {object} currentUser
+   * @description Memoiza o objeto do usuário para evitar re-calculos desnecessários.
    */
-  useEffect(() => {
-    if (usuario) {
-      setUser(usuario);
-    } else {
-      try {
-        const localUser = localStorage.getItem('usuario');
-        if (!localUser) {
-          navigate(paths.login);
-        } else {
-          setUser(JSON.parse(localUser));
-        }
-      } catch (err) {
-        navigate(paths.login);
-      }
+  const currentUser = useMemo(() => {
+    try {
+      return usuario || JSON.parse(localStorage.getItem('usuario'));
+    } catch (e) {
+      return null;
     }
-  }, [usuario, navigate]);
-
+  }, [usuario]);
+  
   /**
-   * Efeito para buscar as propriedades do usuário autenticado na API.
-   * Lida com estados de carregamento e erro.
+   * @description Efeito para buscar as propriedades do usuário autenticado na API.
    */
   useEffect(() => {
-    if (!user) return;
+    if (!currentUser?.id) {
+      navigate(paths.login);
+      return;
+    }
 
     const accessToken = token || localStorage.getItem('accessToken');
     if (!accessToken) {
@@ -121,13 +138,13 @@ const Home = () => {
 
     axios.get(`${API_BASE_URL}/property`, {
       headers: { Authorization: `Bearer ${accessToken}` },
-      params: { page: 1, limit: 20 }
+      params: { limit: 100 }
     })
     .then((res) => {
       const allProps = res.data?.data?.properties || [];
       // Filtra as propriedades para exibir apenas aquelas em que o usuário atual é um cotista.
       const userProps = allProps.filter((p) =>
-        p.usuarios.some((u) => String(u.id) === String(user.id))
+        p.usuarios.some((u) => String(u.id) === String(currentUser.id))
       );
       setProperties(userProps);
     })
@@ -137,28 +154,24 @@ const Home = () => {
     .finally(() => {
       setLoading(false);
     });
-  }, [user, token, navigate]);
+  }, [currentUser, token, navigate]);
 
   /**
-   * Renderiza o conteúdo da seção de propriedades com base nos estados de
-   * carregamento, erro e dados disponíveis.
+   * @function renderContent
+   * @description Renderiza o conteúdo da seção de propriedades com base nos estados.
    */
   const renderContent = () => {
     if (loading) {
-      return <p className="text-gray-600 mt-8 text-center">Carregando propriedades...</p>;
+      return <div className="flex justify-center mt-8"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-gold"></div></div>;
     }
-
     if (error) {
       return (
-        <div className="mt-8 text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert">
-          <strong className="font-bold flex items-center justify-center">
-            <AlertTriangle className="mr-2" /> Ocorreu um erro
-          </strong>
+        <div className="mt-8 text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+          <strong className="font-bold flex items-center justify-center"><AlertTriangle className="mr-2" /> Ocorreu um erro</strong>
           <span className="block sm:inline">{error}</span>
         </div>
       );
     }
-
     if (properties.length === 0) {
       return (
         <p className="text-gray-500 mt-8 text-center">
@@ -166,14 +179,21 @@ const Home = () => {
         </p>
       );
     }
-
     return (
       <section>
         <h2 className="text-xl font-semibold mb-4">Suas Propriedades</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {properties.map((prop) => (
-            <PropertyCard key={prop.id} property={prop} navigate={navigate} />
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {properties.map((prop) => {
+            const userLink = prop.usuarios.find(u => String(u.id) === String(currentUser.id));
+            return (
+              <PropertyCard 
+                key={prop.id} 
+                property={prop}
+                userPermission={userLink?.permissao}
+                navigate={navigate} 
+              />
+            );
+          })}
         </div>
       </section>
     );
@@ -181,22 +201,21 @@ const Home = () => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <Sidebar user={user} />
-
-      <main className="flex-1 p-6 ml-64">
-        <div className="flex justify-center mb-0">
-          <img src={logoQota} alt="Logo QOTA" className="h-64" />
+      <Sidebar user={currentUser} />
+      <main className="flex-1 p-6 ml-0 md:ml-64">
+        <div className="flex justify-center mb-4">
+          <img src={logoQota} alt="Logo QOTA" className="h-20 sm:h-24" />
         </div>
 
-        <h1 className="text-2xl font-bold mb-2 text-center">Bem-vindo à sua Dashboard</h1>
-        <p className="text-gray-700 mb-6 text-center">
-          Gerencie suas propriedades de forma rápida e eficiente.
-        </p>
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold">Bem-vindo(a) à sua Dashboard</h1>
+          <p className="text-gray-600 mt-1">Gerencie suas propriedades de forma rápida e eficiente.</p>
+        </div>
 
         <div className="flex justify-center mb-8">
           <Link
             to={paths.registrarPropriedade}
-            className="inline-block px-6 py-3 bg-black text-white rounded-2xl text-sm font-medium hover:bg-gray-800 transition-all duration-300 shadow-md"
+            className="inline-block px-6 py-3 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-all duration-300 shadow-md"
           >
             + Cadastrar Nova Propriedade
           </Link>
