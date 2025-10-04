@@ -52,36 +52,41 @@ const RegisterProperty = () => {
    * @description Acionado quando um arquivo de documento é selecionado. Inicia o processo
    * de validação em tempo real com a API de OCR.
    */
-  const handleDocumentChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+const handleDocumentChange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-    setForm(prev => ({ ...prev, documento: file }));
-    setDocumentStatus('validating');
-    const loadingToast = toast.loading('Validando documento com IA...');
+  setForm(prev => ({ ...prev, documento: file }));
+  setDocumentStatus('validating');
+  const loadingToast = toast.loading('Validando documento com IA...');
 
-    const fullAddress = `${form.enderecoLogradouro}, ${form.enderecoNumero}, ${form.enderecoBairro}, ${form.enderecoCidade}`;
-    if (fullAddress.length < 15) {
-      toast.error('Por favor, preencha o endereço completo antes de validar o documento.', { id: loadingToast });
-      setDocumentStatus('error');
-      return;
-    }
+  // Monta o endereço completo para validação
+  const fullAddress = `${form.enderecoLogradouro}, ${form.enderecoNumero}`;
+  
+  // Verifica se os campos essenciais estão preenchidos
+  if (fullAddress.length < 5 || form.enderecoCep.length < 8) {
+    toast.error('Por favor, preencha o CEP e o endereço completo antes de validar.', { id: loadingToast });
+    setDocumentStatus('error');
+    setForm(prev => ({ ...prev, documento: null })); // Limpa o arquivo se os dados estiverem incompletos
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append('documento', file);
-    formData.append('address', fullAddress);
+  const formData = new FormData();
+  formData.append('documento', file);
+  formData.append('address', fullAddress);
+  formData.append('cep', form.enderecoCep); 
 
-    try {
-      await axios.post(`${API_URL}/validation/address`, formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDocumentStatus('success');
-      toast.success('Documento validado com sucesso!', { id: loadingToast });
-    } catch (error) {
-      setDocumentStatus('error');
-      toast.error(error.response?.data?.message || 'Falha na validação do documento.', { id: loadingToast });
-    }
-  };
+  try {
+    await axios.post(`${API_URL}/validation/address`, formData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setDocumentStatus('success');
+    toast.success('Documento validado com sucesso!', { id: loadingToast });
+  } catch (error) {
+    setDocumentStatus('error');
+    toast.error(error.response?.data?.message || 'Falha na validação do documento.', { id: loadingToast });
+  }
+};
 
   const handlePhotosChange = (e) => {
     const newFiles = Array.from(e.target.files);
@@ -222,7 +227,7 @@ const RegisterProperty = () => {
                 <InputField label="Ponto de Referência" name="enderecoPontoReferencia" value={form.enderecoPontoReferencia} onChange={handleInputChange} className="md:col-span-3" />
               </div>
               <div className="pt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Comprovante de Endereço (PDF, JPG, PNG)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Comprovante de Endereço (APENAS PDF)</label>
                 {form.documento ? (
                   <div className="flex items-center gap-3 p-2 border rounded-md bg-gray-50">
                     <FileText size={20} className="text-gray-500 flex-shrink-0" />
@@ -235,7 +240,7 @@ const RegisterProperty = () => {
                     </div>
                   </div>
                 ) : (
-                  <FileInput name="documento" onChange={handleDocumentChange} accept=".pdf,.jpg,.jpeg,.png" />
+                  <FileInput name="documento" onChange={handleDocumentChange} accept=".pdf" />
                 )}
               </div>
             </FormSection>
