@@ -1,13 +1,8 @@
 /**
  * @file RegisterProperty.jsx
- * @description Página de formulário para o cadastro de novas propriedades no sistema.
- * Este componente gerencia o estado do formulário, a seleção de múltiplos arquivos
- * com pré-visualização, busca de CEP e o processo de submissão de dados para a API.
+ * @description Página de formulário para o cadastro de novas propriedades no sistema,
+ * com validação de documentos em tempo real utilizando IA (OCR) e formatação de campos.
  */
-
-// Todos direitos autorais reservados pelo QOTA.
-
-
 import React, { useState, useContext, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
@@ -18,17 +13,10 @@ import { AuthContext } from '../context/AuthContext';
 import paths from '../routes/paths';
 
 import Sidebar from '../components/layout/Sidebar';
-import { Building, DollarSign, MapPin, Tag, UploadCloud, FileText, Image as ImageIcon, X } from 'lucide-react';
+import { Building, DollarSign, MapPin, Tag, UploadCloud, FileText, Image as ImageIcon, X, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
-/**
- * URL base da API, obtida de variáveis de ambiente com fallback para desenvolvimento local.
- * @type {string}
- */
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 
-/**
- * Estado inicial do formulário, utilizado para popular e resetar os campos.
- */
 const initialFormState = {
   nomePropriedade: '',
   valorEstimado: '',
@@ -52,49 +40,67 @@ const RegisterProperty = () => {
 
   const [form, setForm] = useState(initialFormState);
   const [loading, setLoading] = useState(false);
+  const [documentStatus, setDocumentStatus] = useState('idle'); // 'idle', 'validating', 'success', 'error'
 
-  /**
-   * @function handleInputChange
-   * @description Manipula as mudanças nos campos de input de texto e select.
-   */
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   }, []);
 
   /**
-   * @function handleFileChange
-   * @description Gerencia a seleção de arquivos para fotos e documentos, aplicando validações.
+   * @function handleDocumentChange
+   * @description Acionado quando um arquivo de documento é selecionado. Inicia o processo
+   * de validação em tempo real com a API de OCR.
    */
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    if (name === 'documento') {
-      setForm(prev => ({ ...prev, documento: files[0] }));
-    } else if (name === 'fotos') {
-      const newFiles = Array.from(files);
-      if (form.fotos.length + newFiles.length > 15) {
-        toast.error('Você pode enviar no máximo 15 fotos.');
-        return;
-      }
-      setForm(prev => ({ ...prev, fotos: [...prev.fotos, ...newFiles] }));
+  const handleDocumentChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setForm(prev => ({ ...prev, documento: file }));
+    setDocumentStatus('validating');
+    const loadingToast = toast.loading('Validando documento com IA...');
+
+    const fullAddress = `${form.enderecoLogradouro}, ${form.enderecoNumero}, ${form.enderecoBairro}, ${form.enderecoCidade}`;
+    if (fullAddress.length < 15) {
+      toast.error('Por favor, preencha o endereço completo antes de validar o documento.', { id: loadingToast });
+      setDocumentStatus('error');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('documento', file);
+    formData.append('address', fullAddress);
+
+    try {
+      await axios.post(`${API_URL}/validation/address`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDocumentStatus('success');
+      toast.success('Documento validado com sucesso!', { id: loadingToast });
+    } catch (error) {
+      setDocumentStatus('error');
+      toast.error(error.response?.data?.message || 'Falha na validação do documento.', { id: loadingToast });
     }
   };
 
-  /**
-   * @function removeFile
-   * @description Permite que o usuário remova um arquivo da seleção antes do upload.
-   */
+  const handlePhotosChange = (e) => {
+    const newFiles = Array.from(e.target.files);
+    if (form.fotos.length + newFiles.length > 15) {
+      toast.error('Você pode enviar no máximo 15 fotos.');
+      return;
+    }
+    setForm(prev => ({ ...prev, fotos: [...prev.fotos, ...newFiles] }));
+  };
+
   const removeFile = (fileType, index) => {
     if (fileType === 'documento') {
       setForm(prev => ({ ...prev, documento: null }));
+      setDocumentStatus('idle');
     } else if (fileType === 'foto') {
       setForm(prev => ({ ...prev, fotos: prev.fotos.filter((_, i) => i !== index) }));
     }
   };
 
-  /**
-   * @description Efeito para buscar o endereço automaticamente quando um CEP válido é digitado.
-   */
   useEffect(() => {
     const cep = form.enderecoCep.replace(/\D/g, '');
     if (cep.length === 8) {
@@ -121,12 +127,12 @@ const RegisterProperty = () => {
     }
   }, [form.enderecoCep]);
 
-  /**
-   * @function handleSubmit
-   * @description Orquestra o processo de submissão do formulário.
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (documentStatus !== 'success') {
+      toast.error('Por favor, valide um comprovante de endereço antes de continuar.');
+      return;
+    }
     setLoading(true);
 
     const submissionPromise = async () => {
@@ -137,7 +143,7 @@ const RegisterProperty = () => {
       
       const propertyData = {
         nomePropriedade: form.nomePropriedade,
-        valorEstimado: Number(form.valorEstimado) || null,
+        valorEstimado: parseFloat(form.valorEstimado.replace(/\./g, '').replace(',', '.')) || null,
         tipo: form.tipo,
         enderecoCep: form.enderecoCep.replace(/\D/g, ''),
         enderecoCidade: form.enderecoCidade,
@@ -193,7 +199,7 @@ const RegisterProperty = () => {
         <div className="w-full max-w-4xl">
           <header className="mb-6 text-center sm:text-left">
             <h1 className="text-3xl font-bold text-gray-800">Cadastrar Nova Propriedade</h1>
-            <p className="text-gray-500 mt-1">Preencha as informações abaixo para adicionar um novo bem à sua conta.</p>
+            <p className="text-gray-500 mt-1">Preencha as informações para adicionar um novo bem à sua conta.</p>
           </header>
 
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md space-y-8">
@@ -201,11 +207,11 @@ const RegisterProperty = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField required label="Nome da Propriedade" name="nomePropriedade" value={form.nomePropriedade} onChange={handleInputChange} icon={<Tag size={16} />} />
                 <SelectField required label="Tipo de Propriedade" name="tipo" value={form.tipo} onChange={handleInputChange} options={tiposPropriedade} />
-                <InputField label="Valor Estimado" name="valorEstimado" type="number" value={form.valorEstimado} onChange={handleInputChange} icon={<DollarSign size={16} />} placeholder="Ex: 150000.00" />
+                <CurrencyInputField label="Valor Estimado" name="valorEstimado" value={form.valorEstimado} onChange={handleInputChange} icon={<DollarSign size={16} />} />
               </div>
             </FormSection>
 
-            <FormSection title="Endereço" icon={<MapPin size={20} />}>
+            <FormSection title="Endereço e Validação" icon={<MapPin size={20} />}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <InputField required label="CEP" name="enderecoCep" value={form.enderecoCep} onChange={handleInputChange} maxLength={9} />
                 <InputField required label="Cidade" name="enderecoCidade" value={form.enderecoCidade} onChange={handleInputChange} className="md:col-span-2" />
@@ -215,46 +221,48 @@ const RegisterProperty = () => {
                 <InputField label="Complemento" name="enderecoComplemento" value={form.enderecoComplemento} onChange={handleInputChange} className="md:col-span-2" />
                 <InputField label="Ponto de Referência" name="enderecoPontoReferencia" value={form.enderecoPontoReferencia} onChange={handleInputChange} className="md:col-span-3" />
               </div>
+              <div className="pt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Comprovante de Endereço (PDF, JPG, PNG)</label>
+                {form.documento ? (
+                  <div className="flex items-center gap-3 p-2 border rounded-md bg-gray-50">
+                    <FileText size={20} className="text-gray-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-700 truncate flex-grow">{form.documento.name}</span>
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      {documentStatus === 'validating' && <Loader2 size={20} className="animate-spin text-blue-500" />}
+                      {documentStatus === 'success' && <CheckCircle size={20} className="text-green-500" />}
+                      {documentStatus === 'error' && <XCircle size={20} className="text-red-500" />}
+                      <button type="button" onClick={() => removeFile('documento')} className="text-red-500 hover:text-red-700"><X size={18} /></button>
+                    </div>
+                  </div>
+                ) : (
+                  <FileInput name="documento" onChange={handleDocumentChange} accept=".pdf,.jpg,.jpeg,.png" />
+                )}
+              </div>
             </FormSection>
 
-            <FormSection title="Documentos e Fotos" icon={<UploadCloud size={20} />}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Comprovante de Endereço (PDF, JPG, PNG)</label>
-                  {form.documento ? (
-                    <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50">
-                      <FileText size={20} className="text-gray-500" />
-                      <span className="text-sm text-gray-700 truncate">{form.documento.name}</span>
-                      <button type="button" onClick={() => removeFile('documento')} className="ml-auto text-red-500 hover:text-red-700"><X size={16} /></button>
+            <FormSection title="Fotos da Propriedade" icon={<ImageIcon size={20} />}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Adicione até 15 fotos</label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mb-2">
+                  {form.fotos.map((file, index) => (
+                    <div key={index} className="relative group aspect-square">
+                      <img src={URL.createObjectURL(file)} alt={`Preview ${index}`} className="w-full h-full object-cover rounded-md" />
+                      <button type="button" onClick={() => removeFile('foto', index)} className="absolute top-1 right-1 bg-red-600/70 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X size={12} />
+                      </button>
                     </div>
-                  ) : (
-                    <FileInput name="documento" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" />
-                  )}
+                  ))}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fotos da Propriedade (mín. 1, máx. 15)</label>
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    {form.fotos.map((file, index) => (
-                      <div key={index} className="relative group aspect-square">
-                        <img src={URL.createObjectURL(file)} alt={`Preview ${index}`} className="w-full h-full object-cover rounded-md" />
-                        <button type="button" onClick={() => removeFile('foto', index)} className="absolute top-1 right-1 bg-red-600/70 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {form.fotos.length < 15 && (
-                    <FileInput name="fotos" onChange={handleFileChange} accept="image/*" multiple />
-                  )}
-                </div>
+                {form.fotos.length < 15 && (
+                  <FileInput name="fotos" onChange={handlePhotosChange} accept="image/*" multiple />
+                )}
               </div>
             </FormSection>
 
             <div className="flex justify-end pt-4 border-t">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || documentStatus !== 'success'}
                 className="px-8 py-3 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {loading ? 'Cadastrando...' : 'Cadastrar Propriedade'}
@@ -308,5 +316,27 @@ const FileInput = (props) => (
   </div>
 );
 
-export default RegisterProperty;
+/**
+ * @component CurrencyInputField
+ * @description InputField especializado para formatação de moeda BRL em tempo real.
+ */
+const CurrencyInputField = ({ label, name, value, onChange, icon }) => {
+  const handleCurrencyChange = (e) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+    if (rawValue === '') {
+      onChange({ target: { name, value: '' } });
+      return;
+    }
+    const formattedValue = new Intl.NumberFormat('pt-BR', {
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(parseFloat(rawValue) / 100);
+    onChange({ target: { name, value: formattedValue } });
+  };
+  
+  return <InputField label={label} name={name} value={value} onChange={handleCurrencyChange} icon={icon} placeholder="0,00" />;
+};
+CurrencyInputField.propTypes = { label: PropTypes.string.isRequired, name: PropTypes.string.isRequired, value: PropTypes.string, onChange: PropTypes.func.isRequired, icon: PropTypes.node };
 
+export default RegisterProperty;
