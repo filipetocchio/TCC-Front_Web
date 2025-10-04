@@ -1,12 +1,11 @@
-/**
- * @file PropertyDetails.jsx
- * @description Componente de página que exibe os detalhes completos de uma propriedade,
- * incluindo informações gerais, galeria de fotos e o módulo de gestão de inventário.
- * Atua como o hub central para todas as ações relacionadas a uma propriedade específica.
- */
-
 // Todos direitos autorais reservados pelo QOTA.
 
+/**
+ * @file PropertyDetails.jsx
+ * @description Componente de página que exibe os detalhes completos de uma propriedade,
+ * incluindo informações gerais, galeria de fotos e o módulo de gestão de inventário.
+ * Atua como o hub central para todas as ações relacionadas a uma propriedade específica.
+ */
 
 import React, { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
@@ -23,18 +22,19 @@ import InventoryGalleryModal from '../components/inventory/InventoryGalleryModal
 import Dialog from '../components/ui/dialog';
 
 import {
-  HomeIcon, Building2, MapPin, Archive, FileText, Calendar, Users,
-  DollarSign, Pencil, Trash2, Image as ImageIcon, PlusCircle, X
+  HomeIcon, Building2, MapPin, Archive, Calendar, Users, DollarSign,
+  Pencil, Trash2, Image as ImageIcon, PlusCircle, X, UploadCloud,
+  FileText, CheckCircle, XCircle, Loader2
 } from 'lucide-react';
 
-// --- Constantes de Configuração ---
+// --- Constantes ---
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 const API_BASE_URL = API_URL.replace('/api/v1', '');
 
 const ICON_MAP = {
   Casa: <HomeIcon className="inline-block mr-1" size={18} />,
   Apartamento: <Building2 className="inline-block mr-1" size={18} />,
-  Chácara: <MapPin className="inline-block mr-1" size={18} />,
+  Chacara: <MapPin className="inline-block mr-1" size={18} />,
   Lote: <Archive className="inline-block mr-1" size={18} />,
   Outros: <HomeIcon className="inline-block mr-1" size={18} />,
 };
@@ -45,12 +45,19 @@ const PropertyDetails = () => {
   const { usuario, token } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Estados da Propriedade
+  // --- Estados Consolidados ---
   const [property, setProperty] = useState(null);
   const [editingProperty, setEditingProperty] = useState(false);
   const [propertyFormData, setPropertyFormData] = useState({});
-  const [showDeletePropertyDialog, setShowDeletePropertyDialog] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
+  const [showDeletePropertyDialog, setShowDeletePropertyDialog] = useState(false);
+
+  // Novos estados para gerenciamento de arquivos na edição
+  const [addressChanged, setAddressChanged] = useState(false);
+  const [newDocument, setNewDocument] = useState(null);
+  const [documentStatus, setDocumentStatus] = useState('idle'); // idle, validating, success, error
+  const [newPhotos, setNewPhotos] = useState([]);
+  const [photosToDelete, setPhotosToDelete] = useState([]);
 
   // Estados do Inventário
   const [inventory, setInventory] = useState([]);
@@ -61,12 +68,6 @@ const PropertyDetails = () => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [galleryItem, setGalleryItem] = useState(null);
 
-  /**
-   * @function fetchData
-   * @description Busca os dados da propriedade e do inventário de forma concorrente.
-   * Utiliza `Promise.all` para otimizar o carregamento dos dados da página.
-   * Memoizada com `useCallback` para estabilidade referencial.
-   */
   const fetchData = useCallback(async () => {
     const accessToken = token || localStorage.getItem('accessToken');
     try {
@@ -86,32 +87,111 @@ const PropertyDetails = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-  
-  /**
-   * @property {boolean} isOwnerMaster
-   * @description Estado derivado e memoizado que verifica se o usuário logado é um
-   * proprietário master da propriedade atual. `useMemo` otimiza o cálculo.
-   */
+
   const isOwnerMaster = useMemo(() => {
-    // A verificação agora aponta para 'm.usuario.id'
     return property?.usuarios?.some(m => m.usuario?.id === usuario?.id && m.permissao === 'proprietario_master');
   }, [property, usuario]);
 
   // --- Manipuladores de Eventos da Propriedade ---
+
   const handlePropertyFormChange = (e) => {
     const { name, value } = e.target;
     setPropertyFormData((prev) => ({ ...prev, [name]: value }));
+
+    const addressFields = ['enderecoCep', 'enderecoCidade', 'enderecoBairro', 'enderecoLogradouro', 'enderecoNumero'];
+    if (addressFields.includes(name)) {
+      setAddressChanged(true);
+      setDocumentStatus('idle');
+      setNewDocument(null);
+    }
+  };
+  
+  const handleNewDocumentChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setNewDocument(file);
+    setDocumentStatus('validating');
+    const loadingToast = toast.loading('Validando novo documento...');
+    
+    const fullAddress = `${propertyFormData.enderecoLogradouro}, ${propertyFormData.enderecoNumero}`;
+    
+    const validationFormData = new FormData();
+    validationFormData.append('documento', file);
+    validationFormData.append('address', fullAddress);
+    validationFormData.append('cep', propertyFormData.enderecoCep);
+
+    try {
+      await axios.post(`${API_URL}/validation/address`, validationFormData, { headers: { Authorization: `Bearer ${token}` } });
+      setDocumentStatus('success');
+      toast.success('Novo comprovante validado com sucesso!', { id: loadingToast });
+    } catch (error) {
+      setDocumentStatus('error');
+      toast.error(error.response?.data?.message || 'Falha na validação.', { id: loadingToast });
+    }
+  };
+  
+  const handleNewPhotosChange = (e) => {
+    const files = Array.from(e.target.files);
+    setNewPhotos(prev => [...prev, ...files]);
+  };
+  
+  const queuePhotoForDeletion = (photoId) => {
+    setPhotosToDelete(prev => [...prev, photoId]);
+    setPropertyFormData(prev => ({
+      ...prev,
+      fotos: prev.fotos.filter(p => p.id !== photoId)
+    }));
   };
 
   const handleUpdateProperty = async () => {
-    const loadingToast = toast.loading('Atualizando propriedade...');
+    if (addressChanged && documentStatus !== 'success') {
+      toast.error('Você alterou o endereço. É obrigatório validar um novo comprovante.');
+      return;
+    }
+
+    const loadingToast = toast.loading('Salvando alterações...');
+    const accessToken = token || localStorage.getItem('accessToken');
+
     try {
-      const response = await axios.put(`${API_URL}/property/${propertyId}`, propertyFormData, { headers: { Authorization: `Bearer ${token}` } });
-      setProperty(response.data.data);
-      setEditingProperty(false);
+      await Promise.all(
+        photosToDelete.map(photoId => 
+          axios.delete(`${API_URL}/propertyPhoto/${photoId}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+        )
+      );
+
+      await Promise.all(
+        newPhotos.map(file => {
+          const photoFormData = new FormData();
+          photoFormData.append('foto', file);
+          photoFormData.append('idPropriedade', propertyId);
+          return axios.post(`${API_URL}/propertyPhoto/upload`, photoFormData, { headers: { Authorization: `Bearer ${accessToken}` } });
+        })
+      );
+      
+      if (newDocument) {
+        const docFormData = new FormData();
+        docFormData.append('documento', newDocument);
+        docFormData.append('idPropriedade', propertyId);
+        docFormData.append('tipoDocumento', 'Comprovante_Endereco_Atualizado');
+        await axios.post(`${API_URL}/propertyDocuments/upload`, docFormData, { headers: { Authorization: `Bearer ${accessToken}` } });
+      }
+
+      await axios.put(`${API_URL}/property/${propertyId}`, propertyFormData, { headers: { Authorization: `Bearer ${accessToken}` } });
+      
       toast.success('Propriedade atualizada com sucesso!', { id: loadingToast });
+      setEditingProperty(false);
+      
+      setAddressChanged(false);
+      setNewDocument(null);
+      setNewPhotos([]);
+      setPhotosToDelete([]);
+      
+      fetchData();
+
     } catch (error) {
-      toast.error('Erro ao atualizar a propriedade.', { id: loadingToast });
+      toast.error('Ocorreu um erro ao salvar as alterações.', { id: loadingToast });
+      console.error("Erro ao atualizar propriedade:", error);
     }
   };
 
@@ -261,31 +341,53 @@ const PropertyDetails = () => {
             </div>
           </div>
 
-          {property.fotos?.length > 0 ? (
-            <div className="mb-8 bg-white rounded-2xl shadow-md overflow-hidden max-w-3xl mx-auto">
+          <div className="mb-8 bg-white rounded-2xl shadow-md overflow-hidden max-w-3xl mx-auto">
+            {property.fotos?.length > 0 ? (
               <div className="relative pt-[56.25%] w-full">
-                <img src={`${API_BASE_URL}${property.fotos[activeImage].documento}`} alt={`Foto ${activeImage + 1}`} className="absolute top-0 left-0 w-full h-full object-cover" />
+                <img src={`${API_BASE_URL}${property.fotos[activeImage]?.documento}`} alt={`Foto ${activeImage + 1}`} className="absolute top-0 left-0 w-full h-full object-cover" />
                 <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
                   {property.fotos.map((_, index) => (<button key={index} onClick={() => setActiveImage(index)} className={`w-3 h-3 rounded-full transition-all ${activeImage === index ? 'bg-gold w-6' : 'bg-white bg-opacity-50'}`} />))}
                 </div>
               </div>
-              {isOwnerMaster && (
-                <div className="p-4 flex justify-center gap-4 border-t">
-                  <button className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center gap-2" onClick={() => setEditingProperty(!editingProperty)}>
-                    <Pencil size={16} />{editingProperty ? 'Cancelar Edição' : 'Editar Propriedade'}
-                  </button>
-                  <button className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition flex items-center gap-2" onClick={() => setShowDeletePropertyDialog(true)}>
-                    <Trash2 size={16} /> Excluir Propriedade
-                  </button>
+            ) : (
+                <div className="h-64 flex flex-col items-center justify-center text-gray-400">
+                    <ImageIcon size={48} className="mb-4" />
+                    <p>Nenhuma foto disponível para esta propriedade</p>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="mb-8 bg-white rounded-2xl shadow-md p-12 flex flex-col items-center justify-center text-gray-400 h-64">
-              <ImageIcon size={48} className="mb-4" />
-              <p>Nenhuma foto disponível para esta propriedade</p>
-            </div>
-          )}
+            )}
+            
+            {editingProperty && (
+              <div className="p-4 border-t">
+                <h3 className="text-lg font-semibold mb-2">Gerenciar Fotos</h3>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mb-4">
+                  {propertyFormData.fotos?.map(photo => (
+                    <div key={photo.id} className="relative group aspect-square">
+                      <img src={`${API_BASE_URL}${photo.documento}`} alt="Foto da propriedade" className="w-full h-full object-cover rounded-md" />
+                      <button 
+                        onClick={() => queuePhotoForDeletion(photo.id)}
+                        className="absolute top-1 right-1 bg-red-600/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+                        title="Excluir foto"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <FileInput name="newPhotos" onChange={handleNewPhotosChange} multiple accept="image/*" />
+              </div>
+            )}
+            
+            {isOwnerMaster && !editingProperty && (
+               <div className="p-4 flex justify-center gap-4 border-t">
+                 <button className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center gap-2" onClick={() => setEditingProperty(true)}>
+                   <Pencil size={16} />Editar Propriedade
+                 </button>
+                 <button className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition flex items-center gap-2" onClick={() => setShowDeletePropertyDialog(true)}>
+                   <Trash2 size={16} /> Excluir Propriedade
+                 </button>
+               </div>
+            )}
+          </div>
 
           <div className="bg-white rounded-2xl shadow-md p-8 mb-8">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2">Detalhes da Propriedade</h2>
@@ -294,23 +396,60 @@ const PropertyDetails = () => {
                 <>
                   <PropertyFormSection title="Informações Básicas" fields={[{ name: 'nomePropriedade', label: 'Nome', type: 'text' }, { name: 'tipo', label: 'Tipo', type: 'select', options: ['Casa', 'Apartamento', 'Chácara', 'Lote', 'Outros'] }, { name: 'valorEstimado', label: 'Valor estimado', type: 'number' }]} formData={propertyFormData} onChange={handlePropertyFormChange} />
                   <PropertyFormSection title="Endereço" fields={[{ name: 'enderecoLogradouro', label: 'Logradouro', type: 'text' }, { name: 'enderecoNumero', label: 'Número', type: 'text' }, { name: 'enderecoBairro', label: 'Bairro', type: 'text' }, { name: 'enderecoCidade', label: 'Cidade', type: 'text' }, { name: 'enderecoCep', label: 'CEP', type: 'text' }, { name: 'enderecoComplemento', label: 'Complemento', type: 'text' }, { name: 'enderecoPontoReferencia', label: 'Ponto de Referência', type: 'text' }]} formData={propertyFormData} onChange={handlePropertyFormChange} />
+                  
+                  {addressChanged && (
+                    <div className="md:col-span-2 p-4 border-l-4 border-yellow-400 bg-yellow-50">
+                      <h4 className="font-bold text-yellow-800">Ação Necessária</h4>
+                      <p className="text-sm text-yellow-700">Você alterou o endereço. Para salvar, é obrigatório enviar e validar um novo comprovante em PDF.</p>
+                      
+                      <div className="mt-4">
+                        {newDocument ? (
+                          <div className="flex items-center gap-3 p-2 border rounded-md bg-gray-50">
+                            <FileText size={20} className="text-gray-500" />
+                            <span className="text-sm truncate">{newDocument.name}</span>
+                            <div className="ml-auto flex items-center gap-2">
+                              {documentStatus === 'validating' && <Loader2 size={20} className="animate-spin text-blue-500" />}
+                              {documentStatus === 'success' && <CheckCircle size={20} className="text-green-500" />}
+                              {documentStatus === 'error' && <XCircle size={20} className="text-red-500" />}
+                              <button type="button" onClick={() => setNewDocument(null)}><X size={18} /></button>
+                            </div>
+                          </div>
+                        ) : (
+                          <FileInput name="newDocument" onChange={handleNewDocumentChange} accept=".pdf" />
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
                   <div className="space-y-4">
                     <DetailItem label="Tipo" value={property.tipo} />
-                    <DetailItem label="Valor estimado" value={`R$ ${Number(property.valorEstimado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                    <DetailItem label="Valor estimado" value={property.valorEstimado ? `R$ ${Number(property.valorEstimado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Não informado'} />
                     <DetailItem label="Responsável" value={property.usuarios?.[0]?.usuario.nomeCompleto ?? 'Não informado'} />
                   </div>
                   <div className="space-y-4">
-                    <DetailItem label="Endereço Completo" value={`${property.enderecoLogradouro}, ${property.enderecoNumero}\n${property.enderecoBairro}, ${property.enderecoCidade}\nCEP: ${property.enderecoCep}`} />
+                    <DetailItem label="Endereço Completo" value={`${property.enderecoLogradouro || ''}, ${property.enderecoNumero || ''}\n${property.enderecoBairro || ''}, ${property.enderecoCidade || ''}\nCEP: ${property.enderecoCep || ''}`} />
                     <DetailItem label="Complemento" value={property.enderecoComplemento || 'Não informado'} />
                     <DetailItem label="Ponto de Referência" value={property.enderecoPontoReferencia || 'Não informado'} />
                   </div>
                 </>
               )}
             </div>
-            {editingProperty && (<div className="mt-8 text-right"><button className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2 ml-auto text-lg" onClick={handleUpdateProperty}>Salvar Alterações</button></div>)}
+            {editingProperty && (
+              <div className="mt-8 flex justify-end gap-4">
+                  <button className="px-6 py-3 bg-gray-200 text-gray-800 rounded-xl font-semibold" onClick={() => setEditingProperty(false)}>
+                    Cancelar
+                  </button>
+                  <button 
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold disabled:bg-gray-400" 
+                    onClick={handleUpdateProperty}
+                    disabled={addressChanged && documentStatus !== 'success'}
+                  >
+                    Salvar Alterações
+                  </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl shadow-md p-8">
@@ -389,5 +528,19 @@ PropertyFormSection.propTypes = { title: PropTypes.string.isRequired, fields: Pr
 const DetailItem = ({ label, value }) => (<div><p className="font-medium text-gray-800">{label}:</p><p className="text-gray-600 whitespace-pre-wrap">{value}</p></div>);
 DetailItem.propTypes = { label: PropTypes.string.isRequired, value: PropTypes.string.isRequired };
 
-export default PropertyDetails;
+const FileInput = (props) => (
+  <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gold transition-colors">
+    <UploadCloud size={24} className="mx-auto text-gray-400" />
+    <p className="mt-1 text-sm text-gray-600">Arraste ou <span className="font-semibold text-gold">clique para enviar</span></p>
+    <input type="file" {...props} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+  </div>
+);
+FileInput.propTypes = {
+    name: PropTypes.string.isRequired,
+    onChange: PropTypes.func.isRequired,
+    multiple: PropTypes.bool,
+    accept: PropTypes.string,
+};
 
+
+export default PropertyDetails;
