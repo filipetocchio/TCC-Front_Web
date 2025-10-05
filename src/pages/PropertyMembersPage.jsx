@@ -1,33 +1,23 @@
-/**
- * @file PropertyMembersPage.jsx
- * @description Página para visualização e gerenciamento de membros e convites de uma propriedade.
- * Permite que proprietários master alterem permissões e convidem novos usuários, com
- * diálogos de confirmação para ações críticas.
- */
-
 // Todos direitos autorais reservados pelo QOTA.
 
 import React, { useEffect, useState, useContext, useMemo, useCallback } from 'react';
-import PropTypes from 'prop-types';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-
+import PropTypes from 'prop-types';
 import { AuthContext } from '../context/AuthContext';
 import paths from '../routes/paths';
-
 import Sidebar from '../components/layout/Sidebar';
 import InviteMemberModal from '../components/members/InviteMemberModal';
 import Dialog from '../components/ui/dialog';
+import { Users, Mail, UserPlus, Clock, ArrowLeft, ShieldCheck, Shield, AlertTriangle, Save, X, Pencil } from 'lucide-react';
 
-import { Users, Mail, UserPlus, Clock, ArrowLeft, ShieldCheck, Shield, AlertTriangle } from 'lucide-react';
-
-/**
- * URL base da API, obtida de variáveis de ambiente com um fallback para desenvolvimento local.
- * @type {string}
- */
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 
+/**
+ * Componente da página para visualização e gerenciamento de membros
+ * e convites de uma propriedade específica.
+ */
 const PropertyMembersPage = () => {
   const { id: propertyId } = useParams();
   const { usuario, token } = useContext(AuthContext);
@@ -38,11 +28,11 @@ const PropertyMembersPage = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [permissionChangeRequest, setPermissionChangeRequest] = useState(null);
+  const [editingCotaId, setEditingCotaId] = useState(null);
+  const [cotaValue, setCotaValue] = useState(0);
 
   /**
-   * @function fetchData
-   * @description Busca os dados da propriedade, seus membros e convites pendentes de forma concorrente.
-   * A função é memoizada com useCallback para otimizar o desempenho, evitando recriações desnecessárias.
+   * Busca os dados essenciais da página (propriedade, membros, convites) de forma assíncrona.
    */
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -52,12 +42,20 @@ const PropertyMembersPage = () => {
         axios.get(`${API_URL}/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } }),
         axios.get(`${API_URL}/invite/property/${propertyId}/pending`, { headers: { Authorization: `Bearer ${accessToken}` } }),
       ]);
-      setProperty(propertyResponse.data.data);
-      setMembers(propertyResponse.data.data.usuarios || []);
+
+      const propertyData = propertyResponse.data.data;
+      const membersData = propertyData?.usuarios || [];
+
+      // Validação de segurança: verifica se a API está enviando os dados esperados.
+      if (membersData.length > 0 && typeof membersData[0].porcentagemCota === 'undefined') {
+        console.error("ALERTA DE INCONSISTÊNCIA: A API não está retornando o campo 'porcentagemCota' para os membros. Verifique o controller 'getById.Property.controller.ts'.");
+      }
+
+      setProperty(propertyData);
+      setMembers(membersData);
       setPendingInvites(invitesResponse.data.data || []);
     } catch (error) {
       toast.error("Não foi possível carregar os dados dos membros.");
-      console.error("Erro ao buscar dados:", error);
     } finally {
       setLoading(false);
     }
@@ -68,64 +66,87 @@ const PropertyMembersPage = () => {
   }, [fetchData]);
 
   /**
-   * @property {object} permissionData
-   * @description Estados derivados e memoizados para otimizar a lógica de permissões.
-   * `isOwnerMaster` verifica se o usuário logado é um administrador desta propriedade.
-   * `masterCount` conta o número total de administradores para aplicar regras de segurança.
+   * Memoiza o cálculo das permissões do usuário para otimizar a renderização.
    */
   const permissionData = useMemo(() => {
+    if (!members || members.length === 0) {
+      return { isOwnerMaster: false, masterCount: 0 };
+    }
     const isMaster = members.some(m => m.usuario?.id === usuario?.id && m.permissao === 'proprietario_master');
     const count = members.filter(m => m.permissao === 'proprietario_master').length;
     return { isOwnerMaster: isMaster, masterCount: count };
   }, [members, usuario]);
 
   /**
-   * @function executePermissionChange
-   * @description Executa a alteração de permissão na API e atualiza o estado local.
+   * Submete a alteração de permissão (role) de um membro para a API.
    */
   const executePermissionChange = async (vinculoId, novaPermissao) => {
     const loadingToast = toast.loading('Atualizando permissão...');
     try {
-      await axios.put(
-        `${API_URL}/permission/${vinculoId}`,
-        { permissao: novaPermissao },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMembers(currentMembers =>
-        currentMembers.map(m => (m.id === vinculoId ? { ...m, permissao: novaPermissao } : m))
-      );
+      await axios.put(`${API_URL}/permission/${vinculoId}`, { permissao: novaPermissao }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Permissão atualizada!', { id: loadingToast });
+      fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Não foi possível atualizar a permissão.', { id: loadingToast });
     }
   };
-  
+
   /**
-   * @function requestPermissionChange
-   * @description Inicia o fluxo de alteração de permissão, exibindo um alerta de confirmação
-   * quando a promoção para 'proprietario_master' é selecionada.
+   * Inicia o fluxo de alteração de permissão, exibindo um diálogo de confirmação se necessário.
    */
   const requestPermissionChange = (vinculoId, novaPermissao) => {
     const member = members.find(m => m.id === vinculoId);
-    if (novaPermissao === 'proprietario_master') {
-      setPermissionChangeRequest({
-        vinculoId,
-        novaPermissao,
-        memberName: member?.usuario?.nomeCompleto || 'o membro',
-      });
+    const isPromotion = novaPermissao === 'proprietario_master' && member?.permissao !== 'proprietario_master';
+
+    if (isPromotion) {
+      setPermissionChangeRequest({ vinculoId, novaPermissao, memberName: member?.usuario?.nomeCompleto || 'o membro' });
     } else {
       executePermissionChange(vinculoId, novaPermissao);
     }
   };
 
   /**
-   * @function confirmPermissionChange
-   * @description Confirma e executa a promoção para 'proprietario_master' após o alerta.
+   * Confirma e executa a alteração de permissão após o diálogo.
    */
   const confirmPermissionChange = () => {
     if (permissionChangeRequest) {
       executePermissionChange(permissionChangeRequest.vinculoId, permissionChangeRequest.novaPermissao);
       setPermissionChangeRequest(null);
+    }
+  };
+
+  /**
+   * Habilita o modo de edição para a cota de um membro específico.
+   */
+  const handleEditCota = (member) => {
+    setEditingCotaId(member.id);
+    setCotaValue(member.porcentagemCota ?? 0);
+  };
+
+  /**
+   * Cancela o modo de edição de cota.
+   */
+  const handleCancelEdit = () => {
+    setEditingCotaId(null);
+    setCotaValue(0);
+  };
+
+  /**
+   * Submete a alteração de porcentagem de cota para a API.
+   */
+  const handleSaveCota = async (vinculoId) => {
+    const loadingToast = toast.loading('Salvando alteração...');
+    try {
+      await axios.put(
+        `${API_URL}/permission/cota/${vinculoId}`,
+        { porcentagemCota: parseFloat(cotaValue) || 0 },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success('Cota atualizada com sucesso!', { id: loadingToast });
+      setEditingCotaId(null);
+      fetchData(); // Recarrega os dados para refletir as mudanças em toda a tela.
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Não foi possível salvar. Verifique o valor inserido.', { id: loadingToast });
     }
   };
 
@@ -164,33 +185,76 @@ const PropertyMembersPage = () => {
 
             <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2"><Users size={22} /> Membros Atuais ({members.length})</h2>
-              <ul className="divide-y divide-gray-200">
-                {members.map(member => (
-                  <li key={member.id} className="py-3 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                    <div>
-                      <p className="font-medium text-gray-900">{member.usuario?.nomeCompleto}</p>
-                      <p className="text-sm text-gray-500">{member.usuario?.email}</p>
-                    </div>
-                    {permissionData.isOwnerMaster ? (
-                      <select
-                        value={member.permissao}
-                        onChange={(e) => requestPermissionChange(member.id, e.target.value)}
-                        disabled={member.usuario?.id === usuario?.id && permissionData.masterCount <= 1}
-                        className="mt-2 sm:mt-0 text-sm font-semibold border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={member.usuario?.id === usuario?.id && permissionData.masterCount <= 1 ? "Não é possível rebaixar o último proprietário master." : "Alterar permissão"}
-                      >
-                        <option value="proprietario_master">Proprietário Master</option>
-                        <option value="proprietario_comum">Proprietário Comum</option>
-                      </select>
-                    ) : (
-                      <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-full mt-2 sm:mt-0 flex items-center gap-1">
-                        {member.permissao === 'proprietario_master' ? <ShieldCheck size={14} /> : <Shield size={14} />}
-                        {member.permissao === 'proprietario_master' ? 'Proprietário Master' : 'Proprietário Comum'}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 px-3 text-sm font-semibold text-gray-600">Membro</th>
+                      <th className="text-left py-2 px-3 text-sm font-semibold text-gray-600">Permissão</th>
+                      <th className="text-left py-2 px-3 text-sm font-semibold text-gray-600">Cota (%)</th>
+                      {permissionData.isOwnerMaster && <th className="text-right py-2 px-3 text-sm font-semibold text-gray-600">Ações</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.map(member => (
+                      <tr key={member.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="py-3 px-3">
+                          <p className="font-medium text-gray-900">{member.usuario?.nomeCompleto}</p>
+                          <p className="text-sm text-gray-500">{member.usuario?.email}</p>
+                        </td>
+                        <td className="py-3 px-3 text-sm">
+                          {permissionData.isOwnerMaster ? (
+                            <select
+                              value={member.permissao}
+                              onChange={(e) => requestPermissionChange(member.id, e.target.value)}
+                              disabled={(member.usuario?.id === usuario?.id && permissionData.masterCount <= 1) || editingCotaId}
+                              className="text-sm font-semibold border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-transparent p-1"
+                              title={member.usuario?.id === usuario?.id && permissionData.masterCount <= 1 ? "Não é possível rebaixar o último proprietário master." : "Alterar permissão"}
+                            >
+                              <option value="proprietario_master">Master</option>
+                              <option value="proprietario_comum">Comum</option>
+                            </select>
+                          ) : (
+                            <span className={`text-sm font-semibold flex items-center gap-1 ${member.permissao === 'proprietario_master' ? 'text-yellow-600' : 'text-gray-700'}`}>
+                              {member.permissao === 'proprietario_master' ? <ShieldCheck size={14} /> : <Shield size={14} />}
+                              {member.permissao === 'proprietario_master' ? 'Master' : 'Comum'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-sm">
+                          {editingCotaId === member.id ? (
+                            <input 
+                              type="number"
+                              value={cotaValue}
+                              onChange={(e) => setCotaValue(e.target.value)}
+                              className="w-24 p-1 border rounded-md"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                            />
+                          ) : (
+                            `${(member.porcentagemCota ?? 0).toFixed(2)}%`
+                          )}
+                        </td>
+                        {permissionData.isOwnerMaster && (
+                          <td className="py-3 px-3 text-right">
+                            {editingCotaId === member.id ? (
+                              <div className="flex gap-2 justify-end">
+                                <button onClick={() => handleSaveCota(member.id)} className="text-green-600 hover:text-green-800" title="Salvar"><Save size={20} /></button>
+                                <button onClick={handleCancelEdit} className="text-red-600 hover:text-red-800" title="Cancelar"><X size={20} /></button>
+                              </div>
+                            ) : (
+                              <button onClick={() => handleEditCota(member)} className="text-blue-600 hover:text-blue-800" disabled={!!editingCotaId} title="Editar Cota">
+                                <Pencil size={18}/>
+                              </button>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
             
             {permissionData.isOwnerMaster && (
@@ -203,6 +267,9 @@ const PropertyMembersPage = () => {
                         <div>
                           <p className="font-medium text-gray-900">{invite.emailConvidado}</p>
                           <p className="text-sm text-gray-500 flex items-center gap-1"><Clock size={12} /> Expira em: {new Date(invite.dataExpiracao).toLocaleDateString()}</p>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-600">
+                          Cota a ser cedida: {(invite.porcentagemCota ?? 0).toFixed(2)}%
                         </div>
                       </li>
                     ))}
@@ -229,11 +296,11 @@ const PropertyMembersPage = () => {
             </div>
           </div>
           <p className="text-sm text-gray-600 mb-6 sm:pl-16">
-            Esta permissão concede acesso total ao gerenciamento da propriedade, incluindo convidar e remover membros, editar detalhes e gerenciar o inventário.
+            Esta permissão concede acesso total ao gerenciamento da propriedade.
           </p>
           <div className="flex justify-end gap-4">
             <button className="px-6 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-100 transition" onClick={() => setPermissionChangeRequest(null)}>Cancelar</button>
-            <button className="px-6 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition flex items-center gap-2" onClick={confirmPermissionChange}>Confirmar Promoção</button>
+            <button className="px-6 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition flex items-center gap-2" onClick={confirmPermissionChange}>Confirmar</button>
           </div>
         </div>
       </Dialog>
@@ -243,7 +310,6 @@ const PropertyMembersPage = () => {
   );
 };
 
-// Adiciona validação de PropTypes para o componente principal, garantindo a integridade dos dados recebidos.
 PropertyMembersPage.propTypes = {};
 
 export default PropertyMembersPage;
