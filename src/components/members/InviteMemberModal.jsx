@@ -11,19 +11,12 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { X, Send, Copy } from 'lucide-react';
 
-/**
- * URL base da API, obtida de variáveis de ambiente com um fallback para desenvolvimento local.
- * @type {string}
- */
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 
-/**
- * Objeto que define o estado inicial e de reset para o formulário do modal.
- * @type {{email: string, permissao: string}}
- */
 const initialState = {
   email: '',
   permissao: 'proprietario_comum',
+  porcentagemCota: 0, // Novo campo
 };
 
 const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
@@ -31,20 +24,13 @@ const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
   const [loading, setLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
 
-  /**
-   * Manipula as mudanças nos campos do formulário, atualizando o estado.
-   * @param {React.ChangeEvent<HTMLInputElement | HTMLSelectElement>} e - O evento de mudança.
-   */
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    // Garante que a porcentagem seja tratada como número
+    const processedValue = type === 'number' ? parseFloat(value) : value;
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
   };
 
-  /**
-   * Submete o formulário, envia a requisição para a API para criar o convite
-   * e exibe o link gerado em caso de sucesso.
-   * @param {React.FormEvent<HTMLFormElement>} e - O evento de submissão do formulário.
-   */
   const handleInvite = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -57,6 +43,7 @@ const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
           emailConvidado: formData.email,
           idPropriedade: propertyId,
           permissao: formData.permissao,
+          porcentagemCota: formData.porcentagemCota, // Envia a nova informação
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -71,18 +58,11 @@ const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
     }
   };
 
-  /**
-   * Copia o link de convite gerado para a área de transferência do usuário.
-   */
   const copyToClipboard = () => {
     navigator.clipboard.writeText(inviteLink);
     toast.success('Link copiado!');
   };
 
-  /**
-   * Fecha o modal e reseta todos os seus estados para a condição inicial,
-   * garantindo que ele esteja limpo na próxima vez que for aberto.
-   */
   const handleClose = () => {
     setFormData(initialState);
     setInviteLink('');
@@ -119,6 +99,25 @@ const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
               />
             </div>
+
+            {/* Novo Campo de Porcentagem */}
+            <div>
+              <label htmlFor="porcentagemCota" className="block text-sm font-medium text-gray-700">Porcentagem da Cota (%)</label>
+              <input
+                type="number"
+                id="porcentagemCota"
+                name="porcentagemCota"
+                value={formData.porcentagemCota}
+                onChange={handleInputChange}
+                required
+                min="0"
+                max="100"
+                step="0.01"
+                placeholder="Ex: 25"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+              />
+            </div>
+            
             <div>
               <label htmlFor="permissao" className="block text-sm font-medium text-gray-700">Permissão</label>
               <select

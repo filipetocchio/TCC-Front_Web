@@ -132,37 +132,48 @@ const handleDocumentChange = async (e) => {
     }
   }, [form.enderecoCep]);
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     if (documentStatus !== 'success') {
       toast.error('Por favor, valide um comprovante de endereço antes de continuar.');
       return;
     }
     setLoading(true);
+    const loadingToast = toast.loading('Cadastrando propriedade...');
 
-    const submissionPromise = async () => {
-      const accessToken = token || localStorage.getItem('accessToken');
-      if (!accessToken || !usuario?.id) {
-        throw new Error('Autenticação inválida. Faça login novamente.');
-      }
-      
-      const propertyData = {
-        nomePropriedade: form.nomePropriedade,
-        valorEstimado: parseFloat(form.valorEstimado.replace(/\./g, '').replace(',', '.')) || null,
-        tipo: form.tipo,
-        enderecoCep: form.enderecoCep.replace(/\D/g, ''),
-        enderecoCidade: form.enderecoCidade,
-        enderecoBairro: form.enderecoBairro,
-        enderecoLogradouro: form.enderecoLogradouro,
-        enderecoNumero: form.enderecoNumero,
-        enderecoComplemento: form.enderecoComplemento,
-        enderecoPontoReferencia: form.enderecoPontoReferencia,
-        userId: usuario.id,
-      };
-      
+    const accessToken = token || localStorage.getItem('accessToken');
+    if (!accessToken || !usuario?.id) {
+      toast.error('Autenticação inválida. Faça login novamente.');
+      setLoading(false);
+      toast.dismiss(loadingToast);
+      return;
+    }
+
+    const propertyData = {
+      nomePropriedade: form.nomePropriedade,
+      valorEstimado: parseFloat(form.valorEstimado.replace(/\./g, '').replace(',', '.')) || null,
+      tipo: form.tipo,
+      enderecoCep: form.enderecoCep.replace(/\D/g, ''),
+      enderecoCidade: form.enderecoCidade,
+      enderecoBairro: form.enderecoBairro,
+      enderecoLogradouro: form.enderecoLogradouro,
+      enderecoNumero: form.enderecoNumero,
+      enderecoComplemento: form.enderecoComplemento,
+      enderecoPontoReferencia: form.enderecoPontoReferencia,
+      userId: usuario.id,
+    };
+
+    try {
+      // Etapa 1: Criar a propriedade
       const propResponse = await axios.post(`${API_URL}/property/create`, propertyData, { headers: { Authorization: `Bearer ${accessToken}` } });
+      
       const propertyId = propResponse.data.data.id;
+      if (!propertyId) {
+        throw new Error("A API não retornou o ID da propriedade criada.");
+      }
 
+      // Etapa 2: Fazer upload dos arquivos (só executa se a Etapa 1 for bem-sucedida)
+      toast.loading('Enviando arquivos...', { id: loadingToast });
       const uploadPromises = [];
       if (form.documento) {
         const docFormData = new FormData();
@@ -180,21 +191,16 @@ const handleDocumentChange = async (e) => {
       });
 
       await Promise.all(uploadPromises);
-    };
 
-    toast.promise(submissionPromise(), {
-      loading: 'Cadastrando propriedade...',
-      success: () => {
-        setLoading(false);
-        setForm(initialFormState);
-        navigate(paths.home);
-        return 'Propriedade cadastrada com sucesso!';
-      },
-      error: (err) => {
-        setLoading(false);
-        return err.response?.data?.message || 'Erro ao cadastrar. Verifique os campos.';
-      },
-    });
+      toast.success('Propriedade cadastrada com sucesso!', { id: loadingToast });
+      setForm(initialFormState);
+      navigate(paths.home);
+
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erro ao cadastrar. Verifique os campos.', { id: loadingToast });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

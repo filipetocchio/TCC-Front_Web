@@ -1,11 +1,17 @@
-import React, { useEffect, useState } from 'react';
+// Todos direitos autorais reservados pelo QOTA.
+
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { X, UploadCloud, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-// Todos direitos autorais reservados pelo QOTA.
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1').replace('/api/v1', '');
 
+/**
+ * Componente de modal para adicionar ou editar itens do inventário.
+ * Ele opera de forma controlada, recebendo seu estado e funções de manipulação via props,
+ * sem gerenciar um estado interno para as fotos existentes.
+ */
 const InventoryModal = ({
   isOpen,
   onClose,
@@ -13,60 +19,62 @@ const InventoryModal = ({
   setFormData,
   handleSubmit,
   itemToEdit,
-  onPhotoUpload,
   onPhotoDelete
 }) => {
-  const [existingPhotos, setExistingPhotos] = useState([]);
 
+  /**
+   * Efeito para inicializar ou resetar o estado do formulário
+   * sempre que o modal é aberto ou o item de edição muda.
+   */
   useEffect(() => {
     if (isOpen) {
       if (itemToEdit) {
-        setFormData({ ...itemToEdit, photoFiles: [] });
-        setExistingPhotos(itemToEdit.fotos || []);
+        // No modo de edição, preenche o formulário com os dados do item.
+        // O clone profundo evita mutações acidentais do estado original.
+        setFormData({ ...JSON.parse(JSON.stringify(itemToEdit)), photoFiles: [] });
       } else {
-        setFormData({ nome: '', quantidade: 1, estadoConservacao: 'BOM', categoria: '', descricao: '', photoFiles: [] });
-        setExistingPhotos([]);
+        // No modo de criação, reseta o formulário para o estado inicial.
+        setFormData({ nome: '', quantidade: 1, estadoConservacao: 'BOM', categoria: '', descricao: '', fotos: [], photoFiles: [] });
       }
     }
   }, [itemToEdit, isOpen, setFormData]);
 
   if (!isOpen) return null;
 
+  /**
+   * Atualiza o estado do formulário conforme o usuário interage com os campos.
+   */
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
-
-    // Converte o valor para número se o input for do tipo 'number'.
-    // Se o campo estiver vazio, mantém uma string vazia para o usuário poder apagar.
-    // Ao submeter, a validação ou conversão final ocorrerá.
     const processedValue = type === 'number' && value !== '' ? parseInt(value, 10) : value;
-
     setFormData(prev => ({ ...prev, [name]: processedValue }));
   };
-  // =======================================================================
   
+  /**
+   * Adiciona novos arquivos de foto ao estado do formulário para pré-visualização.
+   */
   const handleFileChange = (e) => {
     if (e.target.files.length === 0) return;
     const newFiles = Array.from(e.target.files);
-    const totalPhotos = (formData.photoFiles?.length || 0) + existingPhotos.length + newFiles.length;
+    const totalPhotos = (formData.fotos?.length || 0) + (formData.photoFiles?.length || 0) + newFiles.length;
 
     if (totalPhotos > 6) {
-      toast.error('Você só pode ter no máximo 6 fotos por item.');
+      toast.error('Você pode ter no máximo 6 fotos por item.');
       return;
     }
     
-    if (itemToEdit) {
-      onPhotoUpload(newFiles);
-    } else {
-      setFormData(prev => ({ ...prev, photoFiles: [...(prev.photoFiles || []), ...newFiles] }));
-    }
+    setFormData(prev => ({ ...prev, photoFiles: [...(prev.photoFiles || []), ...newFiles] }));
   };
 
+  /**
+   * Remove uma foto da lista de pré-visualização antes de ser enviada.
+   */
   const removeNewFile = (index) => {
     setFormData(prev => ({ ...prev, photoFiles: prev.photoFiles.filter((_, i) => i !== index) }));
   };
 
   const modalTitle = itemToEdit ? 'Editar Item do Inventário' : 'Adicionar Item ao Inventário';
-  const totalPhotosCount = (formData.photoFiles?.length || 0) + existingPhotos.length;
+  const totalPhotosCount = (formData.fotos?.length || 0) + (formData.photoFiles?.length || 0);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -79,7 +87,7 @@ const InventoryModal = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Nome do Item *</label>
-            <input type="text" name="nome" value={formData.nome || ''} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500" />
+            <input type="text" name="nome" value={formData.nome || ''} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -99,13 +107,14 @@ const InventoryModal = ({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Descrição (Opcional)</label>
-            <textarea name="descricao" value={formData.descricao || ''} onChange={handleInputChange} rows="3" placeholder="Ex: Modelo, cor, voltagem, ou qualquer observação." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+            <textarea name="descricao" value={formData.descricao || ''} onChange={handleInputChange} rows="3" placeholder="Ex: Modelo, cor, voltagem..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Fotos ({totalPhotosCount} de 6)</label>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
-              {existingPhotos.map(photo => (
+              {/* Renderiza as fotos existentes diretamente do 'formData', garantindo que a UI esteja sempre sincronizada. */}
+              {formData.fotos?.map(photo => (
                 <div key={`existing-${photo.id}`} className="relative group aspect-square">
                   <img src={`${API_BASE_URL}${photo.url}`} alt="Item" className="w-full h-full object-cover rounded-md" />
                   <button type="button" onClick={() => onPhotoDelete(photo.id)} className="absolute top-1 right-1 bg-red-600/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100">
@@ -113,6 +122,7 @@ const InventoryModal = ({
                   </button>
                 </div>
               ))}
+              {/* Renderiza a pré-visualização das novas fotos. */}
               {formData.photoFiles?.map((file, index) => (
                 <div key={`new-${index}`} className="relative group aspect-square">
                   <img src={URL.createObjectURL(file)} alt={file.name} className="w-full h-full object-cover rounded-md" />
@@ -148,8 +158,8 @@ InventoryModal.propTypes = {
   setFormData: PropTypes.func.isRequired,
   handleSubmit: PropTypes.func.isRequired,
   itemToEdit: PropTypes.object,
-  onPhotoUpload: PropTypes.func.isRequired,
   onPhotoDelete: PropTypes.func.isRequired,
 };
 
 export default InventoryModal;
+

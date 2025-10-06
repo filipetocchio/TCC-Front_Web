@@ -1,12 +1,6 @@
-/**
- * @file Home.jsx
- * @description Página principal (Dashboard) da aplicação.
- * Responsável por saudar o usuário, buscar e exibir a lista de suas propriedades
- * de forma clara e organizada.
- * @author QOTA
- * @copyright 2025 QOTA. Todos os direitos autorais reservados.
- */
-import React, { useEffect, useState, useContext, useMemo } from 'react';
+// Todos direitos autorais reservados pelo QOTA.
+
+import React, { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import axios from 'axios';
@@ -34,14 +28,13 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/
 const propertyIconMap = {
   Casa: <HomeIcon className="inline-block mr-2" size={16} />,
   Apartamento: <Building2 className="inline-block mr-2" size={16} />,
-  Chácara: <MapPin className="inline-block mr-2" size={16} />,
+  Chacara: <MapPin className="inline-block mr-2" size={16} />,
   Lote: <Archive className="inline-block mr-2" size={16} />,
   Outros: <HomeIcon className="inline-block mr-2" size={16} />
 };
 
 /**
- * @component PermissionBadge
- * @description Exibe um selo visual indicando a permissão do usuário na propriedade.
+ * Renderiza um selo visual indicando a permissão do usuário na propriedade.
  */
 const PermissionBadge = ({ permission }) => {
   const isMaster = permission === 'proprietario_master';
@@ -61,8 +54,7 @@ PermissionBadge.propTypes = {
 };
 
 /**
- * @component PropertyCard
- * @description Renderiza um card individual para cada propriedade.
+ * Renderiza um card individual para cada propriedade.
  */
 const PropertyCard = ({ property, userPermission, navigate }) => (
   <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform transform hover:-translate-y-1 hover:shadow-xl">
@@ -91,13 +83,16 @@ const PropertyCard = ({ property, userPermission, navigate }) => (
     </div>
   </div>
 );
-
 PropertyCard.propTypes = {
   property: PropTypes.object.isRequired,
   userPermission: PropTypes.string,
   navigate: PropTypes.func.isRequired,
 };
 
+/**
+ * Página principal (Dashboard) da aplicação, responsável por buscar e exibir
+ * a lista de propriedades associadas ao usuário autenticado.
+ */
 const Home = () => {
   const navigate = useNavigate();
   const { usuario, token } = useContext(AuthContext);
@@ -107,8 +102,7 @@ const Home = () => {
   const [error, setError] = useState(null);
 
   /**
-   * @property {object} currentUser
-   * @description Memoiza o objeto do usuário para evitar re-calculos desnecessários.
+   * Memoiza o objeto do usuário logado para evitar recálculos desnecessários.
    */
   const currentUser = useMemo(() => {
     try {
@@ -119,14 +113,14 @@ const Home = () => {
   }, [usuario]);
   
   /**
-   * @description Efeito para buscar as propriedades do usuário autenticado na API.
+   * Busca todas as propriedades e as filtra para exibir apenas
+   * aquelas que pertencem ao usuário atual.
    */
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!currentUser?.id) {
       navigate(paths.login);
       return;
     }
-
     const accessToken = token || localStorage.getItem('accessToken');
     if (!accessToken) {
       navigate(paths.login);
@@ -136,29 +130,35 @@ const Home = () => {
     setLoading(true);
     setError(null);
 
-    axios.get(`${API_BASE_URL}/property`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      params: { limit: 100 }
-    })
-    .then((res) => {
-      const allProps = res.data?.data?.properties || [];
-      // Filtra as propriedades para exibir apenas aquelas em que o usuário atual é um cotista.
+    try {
+      const response = await axios.get(`${API_BASE_URL}/property`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { limit: 100 }
+      });
+      
+      const allProps = response.data?.data?.properties || [];
+      
+      // Filtra as propriedades para exibir apenas aquelas onde o usuário atual é um membro.
+      // A verificação é feita contra o ID do usuário aninhado (`u.usuario.id`).
       const userProps = allProps.filter((p) =>
-        p.usuarios.some((u) => String(u.id) === String(currentUser.id))
+        p.usuarios.some((u) => String(u.usuario?.id) === String(currentUser.id))
       );
+      
       setProperties(userProps);
-    })
-    .catch(() => {
+    } catch (err) {
       setError('Não foi possível carregar suas propriedades. Por favor, tente novamente mais tarde.');
-    })
-    .finally(() => {
+    } finally {
       setLoading(false);
-    });
+    }
   }, [currentUser, token, navigate]);
 
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   /**
-   * @function renderContent
-   * @description Renderiza o conteúdo da seção de propriedades com base nos estados.
+   * Renderiza o conteúdo principal da página com base nos estados de
+   * carregamento, erro ou sucesso.
    */
   const renderContent = () => {
     if (loading) {
@@ -184,7 +184,7 @@ const Home = () => {
         <h2 className="text-xl font-semibold mb-4">Suas Propriedades</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {properties.map((prop) => {
-            const userLink = prop.usuarios.find(u => String(u.id) === String(currentUser.id));
+            const userLink = prop.usuarios.find(u => String(u.usuario?.id) === String(currentUser.id));
             return (
               <PropertyCard 
                 key={prop.id} 
