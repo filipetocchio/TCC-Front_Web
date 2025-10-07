@@ -76,25 +76,43 @@ const handleDocumentChange = async (e) => {
   formData.append('address', fullAddress);
   formData.append('cep', form.enderecoCep); 
 
-  try {
-    await axios.post(`${API_URL}/validation/address`, formData, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setDocumentStatus('success');
-    toast.success('Documento validado com sucesso!', { id: loadingToast });
-  } catch (error) {
-    setDocumentStatus('error');
-    toast.error(error.response?.data?.message || 'Falha na validação do documento.', { id: loadingToast });
-  }
-};
+    try {
+      await axios.post(`${API_URL}/validation/address`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDocumentStatus('success');
+      toast.success('Documento validado com sucesso!', { id: loadingToast });
+    } catch (error) {
+      setDocumentStatus('error');
+      toast.error(error.response?.data?.message || 'Falha na validação do documento.', { id: loadingToast });
+      
+      // Remove o arquivo inválido do estado do formulário.
+      setForm(prev => ({ ...prev, documento: null }));
+    }
+  };
 
+  /**
+   * Manipula a seleção de arquivos de foto, garantindo que apenas
+   * arquivos de imagem sejam adicionados ao estado do formulário.
+   */
   const handlePhotosChange = (e) => {
-    const newFiles = Array.from(e.target.files);
-    if (form.fotos.length + newFiles.length > 15) {
+    const selectedFiles = Array.from(e.target.files);
+
+    // Filtra a seleção para incluir apenas arquivos cujo tipo comece com "image/".
+    const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
+
+    // Se algum arquivo foi filtrado (ex: um PDF foi selecionado), notifica o usuário.
+    if (imageFiles.length !== selectedFiles.length) {
+      toast.error('Apenas arquivos de imagem (JPG, PNG, etc.) são permitidos nesta seção.');
+    }
+
+    if (form.fotos.length + imageFiles.length > 15) {
       toast.error('Você pode enviar no máximo 15 fotos.');
       return;
     }
-    setForm(prev => ({ ...prev, fotos: [...prev.fotos, ...newFiles] }));
+
+    // Adiciona apenas os arquivos de imagem válidos ao estado.
+    setForm(prev => ({ ...prev, fotos: [...prev.fotos, ...imageFiles] }));
   };
 
   const removeFile = (fileType, index) => {

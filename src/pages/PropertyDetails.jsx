@@ -212,9 +212,29 @@ const PropertyDetails = () => {
     }
   };
   
+ /**
+   * Manipula a seleção de novas fotos para a propriedade, garantindo que
+   * apenas arquivos de imagem sejam processados e adicionados à pré-visualização.
+   */
   const handleNewPhotosChange = (e) => {
-    const files = Array.from(e.target.files);
-    setNewPhotos(prev => [...prev, ...files]);
+    const selectedFiles = Array.from(e.target.files);
+
+    // Filtra a seleção para incluir apenas arquivos cujo tipo MIME comece com "image/".
+    const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
+
+    // Se a quantidade de arquivos válidos for diferente da seleção original,
+    // notifica o usuário que apenas as imagens foram consideradas.
+    if (imageFiles.length !== selectedFiles.length) {
+      toast.error('Apenas arquivos de imagem (JPG, PNG, etc.) são permitidos.');
+    }
+
+    // Se não houver nenhuma imagem válida na seleção, interrompe a função.
+    if (imageFiles.length === 0) {
+        return;
+    }
+    
+    // Adiciona apenas os arquivos de imagem válidos ao estado de pré-visualização.
+    setNewPhotos(prev => [...prev, ...imageFiles]);
   };
   
   const queuePhotoForDeletion = (photoId) => {

@@ -44,7 +44,7 @@ export default function App() {
         }}
         toastOptions={{
           // Define uma duração padrão mais longa para todos os toasts.
-          duration: 6000, //  segundos
+          duration: 8000, //  segundos
           
           // Estilos específicos para cada tipo de notificação.
           success: {
@@ -56,7 +56,7 @@ export default function App() {
             },
           },
           error: {
-            duration: 6000, // segundos para erros
+            duration: 8000, // segundos para erros
             style: {
               background: '#fee2e2', // Vermelho claro
               color: '#991b1b',      // Vermelho escuro

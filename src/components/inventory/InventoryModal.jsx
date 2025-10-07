@@ -53,17 +53,31 @@ const InventoryModal = ({
   /**
    * Adiciona novos arquivos de foto ao estado do formulário para pré-visualização.
    */
+ /**
+   * Adiciona novos arquivos de foto ao estado do formulário, garantindo
+   * que apenas arquivos de imagem sejam aceitos.
+   */
   const handleFileChange = (e) => {
     if (e.target.files.length === 0) return;
-    const newFiles = Array.from(e.target.files);
-    const totalPhotos = (formData.fotos?.length || 0) + (formData.photoFiles?.length || 0) + newFiles.length;
+    const selectedFiles = Array.from(e.target.files);
 
+    // Filtra para incluir apenas arquivos cujo tipo MIME comece com "image/".
+    const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
+
+    // Se algum arquivo foi filtrado, notifica o usuário.
+    if (imageFiles.length !== selectedFiles.length) {
+      toast.error('Apenas arquivos de imagem (JPG, PNG, etc.) são permitidos.');
+    }
+
+    // Validação de limite de fotos
+    const totalPhotos = (formData.fotos?.length || 0) + (formData.photoFiles?.length || 0) + imageFiles.length;
     if (totalPhotos > 6) {
       toast.error('Você pode ter no máximo 6 fotos por item.');
       return;
     }
     
-    setFormData(prev => ({ ...prev, photoFiles: [...(prev.photoFiles || []), ...newFiles] }));
+    // Adiciona apenas os arquivos de imagem válidos ao estado para pré-visualização.
+    setFormData(prev => ({ ...prev, photoFiles: [...(prev.photoFiles || []), ...imageFiles] }));
   };
 
   /**
