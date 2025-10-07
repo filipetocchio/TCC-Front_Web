@@ -68,22 +68,23 @@ const PropertyDetails = () => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [galleryItem, setGalleryItem] = useState(null);
 
-  /**
-   * Busca todos os dados necessários para a página de forma concorrente.
+ /**
+   * Busca todos os dados necessários para a página, incluindo as notificações.
    */
   const fetchData = useCallback(async () => {
+    setLoading(true);
     const accessToken = token || localStorage.getItem('accessToken');
     try {
-      const [propertyResponse, inventoryResponse] = await Promise.all([
+      const [propertyResponse, inventoryResponse, notificationsResponse] = await Promise.all([
         axios.get(`${API_URL}/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } }),
         axios.get(`${API_URL}/inventory/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } }),
-        // A chamada de notificações será descomentada quando o backend estiver pronto.
-        // axios.get(`${API_URL}/notification/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+        
+        axios.get(`${API_URL}/notification/property/${propertyId}`, { headers: { Authorization: `Bearer ${accessToken}` } })
       ]);
       setProperty(propertyResponse.data.data);
       setPropertyFormData(propertyResponse.data.data);
       setInventory(inventoryResponse.data.data);
-      // setNotifications(notificationsResponse.data.data || []);
+      setNotifications(notificationsResponse.data.data || []);
     } catch (error) {
       toast.error('Não foi possível carregar os dados da propriedade.');
     } finally {
@@ -114,21 +115,25 @@ const PropertyDetails = () => {
     };
   }, [property, usuario]);
 
-  /**
-   * Identifica as notificações não lidas pelo usuário atual.
+   /**
+   * Identifica as notificações que o usuário atual ainda não leu.
+   * A lógica verifica se o ID do usuário logado não está na lista 'lidaPor'.
    */
   const unreadNotifications = useMemo(() => {
-    if (!usuario) return [];
-    // A lógica de verificação de 'lidaPor' será ativada com os dados reais da API.
-    return notifications.filter(n => !n.lida);
+    if (!usuario || !notifications) return [];
+    return notifications.filter(n => 
+      !n.lidaPor.some(userWhoRead => userWhoRead.id === usuario.id)
+    );
   }, [notifications, usuario]);
 
-  /**
-   * Manipula o fechamento do modal de notificações, marcando-as como lidas.
+ /**
+   * Manipula o fechamento do modal de notificações. Se houver notificações
+   * não lidas, envia seus IDs para a API para marcá-las como lidas.
    */
   const handleCloseNotificationModal = async () => {
     setIsNotificationModalOpen(false);
     const unreadIds = unreadNotifications.map(n => n.id);
+
     if (unreadIds.length > 0) {
       try {
         await axios.put(
@@ -136,7 +141,16 @@ const PropertyDetails = () => {
           { notificationIds: unreadIds },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        fetchData(); // Recarrega os dados para atualizar o status do sino.
+        // Atualiza o estado local para uma resposta visual instantânea,
+        // adicionando o usuário atual à lista 'lidaPor' das notificações.
+        setNotifications(currentNotifications => 
+          currentNotifications.map(n => {
+            if (unreadIds.includes(n.id)) {
+              return { ...n, lidaPor: [...n.lidaPor, { id: usuario.id }] };
+            }
+            return n;
+          })
+        );
       } catch (error) {
         toast.error("Não foi possível marcar as notificações como lidas.");
       }
@@ -621,11 +635,8 @@ NotificationBell.propTypes = { unreadCount: PropTypes.number.isRequired, onClick
 
 const NotificationModal = ({ isOpen, onClose, notifications }) => {
     if (!isOpen) return null;
-    const mockNotifications = [
-        {id: 1, mensagem: "Usuário 'José Silva' adicionou o item 'Cadeira de Praia' ao inventário.", createdAt: new Date().toISOString(), lida: false},
-        {id: 2, mensagem: "Usuário 'Maria Oliveira' atualizou as informações da propriedade.", createdAt: new Date().toISOString(), lida: true},
-    ];
-    const displayNotifications = notifications?.length > 0 ? notifications : mockNotifications;
+    
+    const displayNotifications = notifications || [];
 
     return (
       <Dialog isOpen={isOpen} onClose={onClose} title="Central de Notificações">
@@ -633,9 +644,11 @@ const NotificationModal = ({ isOpen, onClose, notifications }) => {
           {displayNotifications.length > 0 ? (
             <ul className="space-y-3">
               {displayNotifications.map(n => (
-                <li key={n.id} className={`p-3 rounded-lg text-sm ${!n.lida ? 'bg-blue-50' : 'bg-gray-50'}`}>
+                <li key={n.id} className="p-3 bg-gray-100 rounded-lg text-sm">
                   <p className="text-gray-800">{n.mensagem}</p>
-                  <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString('pt-BR')}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(n.createdAt).toLocaleString('pt-BR')}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -643,8 +656,7 @@ const NotificationModal = ({ isOpen, onClose, notifications }) => {
             <p className="text-center text-gray-500 py-4">Nenhuma notificação por enquanto.</p>
           )}
         </div>
-        <div className="p-4 border-t flex justify-end gap-3">
-            <button onClick={() => toast("Função para marcar todas como lidas a ser implementada.")} className="px-4 py-2 bg-gray-200 rounded-md text-sm font-semibold">Marcar todas como lidas</button>
+        <div className="p-4 border-t flex justify-end">
             <button onClick={onClose} className="px-4 py-2 bg-black text-white rounded-md text-sm font-semibold">Fechar</button>
         </div>
       </Dialog>
