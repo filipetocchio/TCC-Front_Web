@@ -10,6 +10,9 @@ const paths = {
   propriedade: '/property/:id',
   gerenciarMembros: '/property/:id/members',
   aceitarConvite: '/convite/:token',
+  financeiro: '/property/:id/financials',
+  calendario: '/property/:id/calendar',
+  detalhesReserva: '/reservation/:id',
 };
 
 export default paths;

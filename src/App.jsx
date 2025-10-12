@@ -16,13 +16,16 @@ import RegisterProperty from './pages/RegisterProperty';
 import RegisterUser from './pages/RegisterUser';
 import EditProfile from './pages/EditProfile';
 import PropertyDetails from './pages/PropertyDetails';
+import ReservationDetailsPage from './pages/ReservationDetailsPage'; 
+
 
 // Páginas Legais (LGPD) e de Gestão
 import TermsPage from './pages/TermsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import PropertyMembersPage from './pages/PropertyMembersPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
-
+import FinancialDashboard from './pages/FinancialDashboard';
+import CalendarPage from './pages/CalendarPage';
 /**
  * Componente raiz da aplicação.
  * Responsável por gerenciar o provedor de autenticação, o roteamento de páginas
@@ -79,6 +82,10 @@ export default function App() {
           <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
           <Route path={paths.gerenciarMembros} element={<PropertyMembersPage />} />
           <Route path={paths.aceitarConvite} element={<AcceptInvitePage />} />
+          <Route path={paths.financeiro} element={<FinancialDashboard />} />
+          <Route path={paths.calendario} element={<CalendarPage />} />
+          <Route path={paths.detalhesReserva} element={<ReservationDetailsPage />} /> 
+
         </Routes>
 
         {/* Componente para o banner de consentimento de cookies. */}

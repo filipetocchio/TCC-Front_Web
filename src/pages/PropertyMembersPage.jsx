@@ -10,7 +10,7 @@ import paths from '../routes/paths';
 import Sidebar from '../components/layout/Sidebar';
 import InviteMemberModal from '../components/members/InviteMemberModal';
 import Dialog from '../components/ui/dialog';
-import { Users, Mail, UserPlus, Clock, ArrowLeft, ShieldCheck, Shield, AlertTriangle, Save, X, Pencil } from 'lucide-react';
+import { Users, Mail, UserPlus, Clock, ArrowLeft, ShieldCheck, Shield, AlertTriangle, Save, X, Trash2 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 
@@ -30,6 +30,36 @@ const PropertyMembersPage = () => {
   const [permissionChangeRequest, setPermissionChangeRequest] = useState(null);
   const [editingCotaId, setEditingCotaId] = useState(null);
   const [cotaValue, setCotaValue] = useState(0);
+  const [memberToUnlink, setMemberToUnlink] = useState(null); 
+
+
+    /**
+   * Inicia o fluxo para desvincular um membro, abrindo o diálogo de confirmação.
+   */
+  const handleUnlinkMember = (member) => {
+    setMemberToUnlink(member);
+  };
+
+  /**
+   * Executa a chamada à API para desvincular o membro após a confirmação do usuário.
+   */
+  const handleConfirmUnlink = async () => {
+    if (!memberToUnlink) return;
+    const loadingToast = toast.loading(`Desvinculando ${memberToUnlink.usuario.nomeCompleto}...`);
+    try {
+      
+      await axios.delete(
+        `${API_URL}/permission/unlink/member/${memberToUnlink.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Membro desvinculado com sucesso!", { id: loadingToast });
+      setMemberToUnlink(null); // Fecha o diálogo
+      fetchData(); // Atualiza a lista de membros
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Não foi possível desvincular o membro.", { id: loadingToast });
+      setMemberToUnlink(null);
+    }
+  };
 
   /**
    * Busca os dados essenciais da página (propriedade, membros, convites) de forma assíncrona.
@@ -153,7 +183,7 @@ const PropertyMembersPage = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar user={usuario} />
+        <Sidebar variant="property" />
         <main className="flex-1 p-6 ml-0 sm:ml-64 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold"></div>
         </main>
@@ -164,7 +194,7 @@ const PropertyMembersPage = () => {
   return (
     <>
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar user={usuario} />
+        <Sidebar variant="property" />
         <main className="flex-1 p-4 sm:p-6 ml-0 sm:ml-64">
           <div className="max-w-4xl mx-auto">
             <Link to={paths.propriedade.replace(':id', propertyId)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-black mb-4">
@@ -237,18 +267,26 @@ const PropertyMembersPage = () => {
                           )}
                         </td>
                         {permissionData.isOwnerMaster && (
-                          <td className="py-3 px-3 text-right">
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-4">
                             {editingCotaId === member.id ? (
                               <div className="flex gap-2 justify-end">
                                 <button onClick={() => handleSaveCota(member.id)} className="text-green-600 hover:text-green-800" title="Salvar"><Save size={20} /></button>
                                 <button onClick={handleCancelEdit} className="text-red-600 hover:text-red-800" title="Cancelar"><X size={20} /></button>
                               </div>
                             ) : (
-                              <button onClick={() => handleEditCota(member)} className="text-blue-600 hover:text-blue-800" disabled={!!editingCotaId} title="Editar Cota">
-                                <Pencil size={18}/>
-                              </button>
+                              <>
+                              
+                                {member.usuario?.id !== usuario?.id && (
+                                  <button onClick={() => handleUnlinkMember(member)} className="text-red-600 hover:text-red-800" title="Desvincular Membro">
+                                    <Trash2 size={18} />
+                                  </button>
+                                )}
+                                <button onClick={() => handleEditCota(member)} className="text-gold hover:text-black font-medium text-sm">Editar Cota</button>
+                              </>
                             )}
-                          </td>
+                          </div>
+                        </td>
                         )}
                       </tr>
                     ))}
@@ -282,7 +320,25 @@ const PropertyMembersPage = () => {
           </div>
         </main>
       </div>
-
+      <Dialog
+        isOpen={!!memberToUnlink}
+        onClose={() => setMemberToUnlink(null)}
+        title="Confirmar Desvinculação de Cotista"
+      >
+        <div className="p-6">
+          <p className="text-gray-700 mb-6 text-lg">
+            Você tem certeza que deseja desvincular <strong>{memberToUnlink?.usuario?.nomeCompleto}</strong> da propriedade? A porcentagem de cota dele(a) será transferida para você. Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex justify-end gap-4">
+            <button className="px-6 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-100 transition" onClick={() => setMemberToUnlink(null)}>
+              Cancelar
+            </button>
+            <button className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition flex items-center gap-2" onClick={handleConfirmUnlink}>
+              <Trash2 size={16} /> Confirmar Desvinculação
+            </button>
+          </div>
+        </div>
+      </Dialog>
       <Dialog isOpen={!!permissionChangeRequest} onClose={() => setPermissionChangeRequest(null)} title="Confirmar Alteração de Permissão">
         <div className="p-6">
           <div className="flex items-start sm:items-center gap-4 mb-4">

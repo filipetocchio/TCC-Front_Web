@@ -13,17 +13,22 @@
   },
   "dependencies": {
     "clsx": "2.1.1",
+    "date-fns": "^4.1.0",
     "frontend": "file:",
     "jwt-decode": "4.0.0",
     "lucide-react": "0.507.0",
     "prop-types": "15.8.1",
     "react": "18.0.0",
+    "react-big-calendar": "^1.19.4",
     "react-cookie-consent": "9.0.0",
+    "react-currency-input-field": "^4.0.3",
+    "react-datepicker": "^8.7.0",
     "react-dom": "18.0.0",
     "react-hot-toast": "2.6.0",
     "react-image-crop": "11.0.10",
     "react-input-mask": "2.0.4",
-    "react-router-dom": "7.6.0"
+    "react-router-dom": "7.6.0",
+    "recharts": "^3.2.1"
   },
   "devDependencies": {
     "@eslint/js": "9.22.0",

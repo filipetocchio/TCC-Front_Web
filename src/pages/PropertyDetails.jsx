@@ -410,52 +410,51 @@ const PropertyDetails = () => {
     }
   };
 
-  if (loading || !property) {
-    return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar user={usuario} />
-        <main className="flex-1 p-6 ml-0 md:ml-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold"></div>
-        </main>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar user={usuario} />
-        <main className="flex-1 p-6 ml-0 md:ml-64">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-                {ICON_MAP[property.tipo] ?? ICON_MAP['Outros']}{property.nomePropriedade}
-              </h1>
-              <p className="text-gray-500 mt-1">{property.enderecoLogradouro}, {property.enderecoCidade}</p>
-              {currentUserPermissions.isMember && (
-                <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
-                  <span className="flex items-center gap-1 font-semibold">
-                    <UserCheck size={16} className={currentUserPermissions.isMaster ? 'text-gold' : 'text-gray-500'}/>
-                    {currentUserPermissions.isMaster ? 'Proprietário Master' : 'Proprietário Comum'}
-                  </span>
-                  <span className="flex items-center gap-1 font-semibold">
-                    <PieChart size={16} className="text-blue-500"/>
-                    {`${(currentUserPermissions.cota ?? 0).toFixed(2)}% de cota`}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-                <ActionButton icon={<DollarSign size={16} />} text="Financeiro" />
-                <ActionButton icon={<Calendar size={16} />} text="Agenda" />
-                <ActionButton
-                    icon={<Users size={16} />}
-                    text="Cotistas"
-                    onClick={() => navigate(paths.gerenciarMembros.replace(':id', propertyId))}
-                />
-                <NotificationBell unreadCount={unreadNotifications.length} onClick={() => setIsNotificationModalOpen(true)} />
-            </div>
+    if (loading || !property) {
+        return (
+          <div className="flex min-h-screen bg-gray-50">
+           
+            <Sidebar variant="property" /> 
+            <main className="flex-1 p-6 ml-0 md:ml-64 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold"></div>
+            </main>
           </div>
+        );
+      }
+    
+      return (
+        <>
+          <div className="flex min-h-screen bg-gray-50">
+           
+            <Sidebar variant="property" />
+
+            <main className="flex-1 p-6 ml-0 md:ml-64">
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                    {ICON_MAP[property.tipo] ?? ICON_MAP['Outros']}{property.nomePropriedade}
+                  </h1>
+                  <p className="text-gray-500 mt-1">{property.enderecoLogradouro}, {property.enderecoCidade}</p>
+                  {currentUserPermissions.isMember && (
+                    <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1 font-semibold">
+                        <UserCheck size={16} className={currentUserPermissions.isMaster ? 'text-gold' : 'text-gray-500'}/>
+                        {currentUserPermissions.isMaster ? 'Proprietário Master' : 'Proprietário Comum'}
+                      </span>
+                      <span className="flex items-center gap-1 font-semibold">
+                        <PieChart size={16} className="text-blue-500"/>
+                        {`${(currentUserPermissions.cota ?? 0).toFixed(2)}% de cota`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                
+                <div className="flex items-center gap-3">
+                  <NotificationBell unreadCount={unreadNotifications.length} onClick={() => setIsNotificationModalOpen(true)} />
+                </div>
+              </div>
+          
 
           <div className="mb-8 bg-white rounded-2xl shadow-md overflow-hidden max-w-3xl mx-auto">
             {property.fotos?.length > 0 ? (
@@ -505,23 +504,26 @@ const PropertyDetails = () => {
               </div>
             )}
             
-            <div className="p-4 flex justify-center gap-4 border-t">
-              {currentUserPermissions.isMaster && !editingProperty && (
-                <>
-                  <button className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center gap-2" onClick={() => setEditingProperty(true)}>
-                    <Pencil size={16} />Editar Propriedade
-                  </button>
-                  <button className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition flex items-center gap-2" onClick={() => setShowDeletePropertyDialog(true)}>
-                    <Trash2 size={16} /> Excluir Propriedade
-                  </button>
-                </>
-              )}
-              {!currentUserPermissions.isMaster && currentUserPermissions.isMember && (
-                  <button className="px-6 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition flex items-center gap-2" onClick={() => setShowUnlinkDialog(true)}>
-                    <LogOut size={16} /> Desvincular da Propriedade
-                  </button>
-              )}
-            </div>
+          <div className="p-4 flex justify-center gap-4 border-t">
+            {/* Botões que aparecem apenas para o Proprietário Master */}
+            {currentUserPermissions.isMaster && !editingProperty && (
+              <>
+                <button className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center gap-2" onClick={() => setEditingProperty(true)}>
+                  <Pencil size={16} />Editar Propriedade
+                </button>
+                <button className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition flex items-center gap-2" onClick={() => setShowDeletePropertyDialog(true)}>
+                  <Trash2 size={16} /> Excluir Propriedade
+                </button>
+              </>
+            )}
+
+            {/* O botão de desvincular  aparece para QUALQUER membro (Master ou Comum) */}
+            {currentUserPermissions.isMember && !editingProperty && (
+              <button className="px-6 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition flex items-center gap-2" onClick={() => setShowUnlinkDialog(true)}>
+                <LogOut size={16} /> Desvincular da Propriedade
+              </button>
+            )}
+          </div>
           </div>
           
           <div className="bg-white rounded-2xl shadow-md p-8 mb-8">
