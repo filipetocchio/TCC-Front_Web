@@ -16,7 +16,7 @@ import { Home as HomeIcon, Building2, MapPin, Archive, AlertTriangle, ShieldChec
  * para buscar e exibir a lista de propriedades do usuário autenticado.
  */
 
-// Componentes de UI (permanecem os mesmos, mas podem ser movidos para seus próprios arquivos no futuro)
+// Componentes de UI 
 const propertyIconMap = {
   Casa: <HomeIcon className="inline-block mr-2" size={16} />,
   Apartamento: <Building2 className="inline-block mr-2" size={16} />,
@@ -73,7 +73,7 @@ PropertyCard.propTypes = {
 };
 
 const Home = () => {
-  // O componente agora consome o hook, que encapsula toda a lógica de busca.
+  // O componente consome o hook, que encapsula toda a lógica de busca.
   const { properties, loading, error } = useUserProperties();
   const { usuario: currentUser } = useAuth();
   const navigate = useNavigate();

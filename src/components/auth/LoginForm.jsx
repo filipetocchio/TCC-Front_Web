@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import paths from '../../routes/paths';
 import { AuthContext } from '../../context/AuthContext';
-// ... (outros imports) ...
 import LoginImage from '../../assets/login.png';
 import SuaLogo from '../../assets/Ln QOTA Branca.png'; 
 import { Mail, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -26,14 +25,10 @@ const LoginForm = () => {
       const loginResponse = await api.post('/auth/login', { email, password: senha });
       const { accessToken, ...userData } = loginResponse.data.data;
       
-      // --- MUDANÇA PRINCIPAL ---
       // 2. Chama a função de login do contexto. Ela vai salvar o usuário,
       //    salvar o token no estado E chamar setAuthToken para o Axios.
       login(userData, accessToken);
 
-      // 3. A segunda chamada de API foi removida. O endpoint de login agora
-      //    DEVE retornar os dados completos do usuário para otimizar.
-      //    (Se não retornar, precisaremos ajustar o backend de login).
 
       navigate(paths.home);
     } catch (error) {
@@ -44,7 +39,6 @@ const LoginForm = () => {
     }
   };
 
-  // ... (o JSX do return permanece exatamente o mesmo) ...
   return (
     <div className="flex h-screen">
       {/* Formulário à esquerda - 30% */}

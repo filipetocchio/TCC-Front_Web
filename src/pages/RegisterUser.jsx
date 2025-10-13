@@ -73,8 +73,7 @@ const RegisterUser = () => {
         <h2 className="text-xl font-semibold text-center text-text-on-gold mb-6">Cadastro de Usuário</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* O formulário agora é construído com o componente Input reutilizável,
-              o que torna o código mais limpo e padronizado. */}
+
           <Input
             label="Nome Completo"
             id="nomeCompleto"

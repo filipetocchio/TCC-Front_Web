@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { AuthContext } from './AuthContext';
-// --- MUDANÇA 1: Importa o 'api' e a nova função 'setAuthToken' ---
 import api, { setAuthToken } from '../services/api';
 
 const AuthProvider = ({ children }) => {
-  // ... (useState e useEffect de restoreSession permanecem os mesmos) ...
   const [usuario, setUsuario] = useState(null);
   const [token, setToken] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -32,7 +30,6 @@ const AuthProvider = ({ children }) => {
     setUsuario(usuarioData);
     setToken(tokenData);
     localStorage.setItem('usuario', JSON.stringify(usuarioData));
-    // --- MUDANÇA 2: Avisa o serviço da API qual é o novo token ---
     setAuthToken(tokenData);
   };
 
@@ -45,7 +42,6 @@ const AuthProvider = ({ children }) => {
       setUsuario(null);
       setToken(null);
       localStorage.removeItem('usuario');
-      // --- MUDANÇA 3: Avisa o serviço da API que não há mais token ---
       setAuthToken(null);
     }
   };
