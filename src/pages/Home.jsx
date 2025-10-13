@@ -1,30 +1,22 @@
 // Todos direitos autorais reservados pelo QOTA.
 
-import React, { useEffect, useState, useContext, useMemo, useCallback } from 'react';
+import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import axios from 'axios';
-
+import { useUserProperties } from '../hooks/useUserProperties';
+import useAuth from '../hooks/useAuth';
 import Sidebar from '../components/layout/Sidebar';
 import paths from '../routes/paths';
-import { AuthContext } from '../context/AuthContext';
 import logoQota from '../assets/Ln QOTA.png';
-
-import { 
-  Home as HomeIcon, 
-  Building2, 
-  MapPin, 
-  Archive, 
-  AlertTriangle, 
-  ShieldCheck, 
-  Shield 
-} from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
+import { Home as HomeIcon, Building2, MapPin, Archive, AlertTriangle, ShieldCheck, Shield } from 'lucide-react';
 
 /**
- * Mapeia os tipos de propriedade para seus respectivos ícones.
+ * @page Home
+ * @description Página principal (Dashboard) da aplicação. Utiliza o hook 'useUserProperties'
+ * para buscar e exibir a lista de propriedades do usuário autenticado.
  */
+
+// Componentes de UI (permanecem os mesmos, mas podem ser movidos para seus próprios arquivos no futuro)
 const propertyIconMap = {
   Casa: <HomeIcon className="inline-block mr-2" size={16} />,
   Apartamento: <Building2 className="inline-block mr-2" size={16} />,
@@ -33,9 +25,6 @@ const propertyIconMap = {
   Outros: <HomeIcon className="inline-block mr-2" size={16} />
 };
 
-/**
- * Renderiza um selo visual indicando a permissão do usuário na propriedade.
- */
 const PermissionBadge = ({ permission }) => {
   const isMaster = permission === 'proprietario_master';
   const Icon = isMaster ? ShieldCheck : Shield;
@@ -49,17 +38,12 @@ const PermissionBadge = ({ permission }) => {
     </div>
   );
 };
-PermissionBadge.propTypes = {
-  permission: PropTypes.string.isRequired,
-};
+PermissionBadge.propTypes = { permission: PropTypes.string };
 
-/**
- * Renderiza um card individual para cada propriedade.
- */
-const PropertyCard = ({ property, userPermission, navigate }) => (
+const PropertyCard = ({ property, navigate }) => (
   <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-transform transform hover:-translate-y-1 hover:shadow-xl">
     <img
-      src={property.fotos[0]?.documento ? `http://localhost:8001${property.fotos[0].documento}` : '/placeholder.png'}
+      src={property.imagemPrincipal || '/placeholder.png'}
       alt={`Imagem da propriedade ${property.nomePropriedade}`}
       className="w-full h-40 object-cover"
     />
@@ -72,7 +56,7 @@ const PropertyCard = ({ property, userPermission, navigate }) => (
         <h3 className="text-lg font-bold truncate" title={property.nomePropriedade}>
           {property.nomePropriedade}
         </h3>
-        {userPermission && <PermissionBadge permission={userPermission} />}
+        {property.permissao && <PermissionBadge permission={property.permissao} />}
       </div>
       <button
         onClick={() => navigate(paths.propriedade.replace(':id', property.id))}
@@ -85,80 +69,18 @@ const PropertyCard = ({ property, userPermission, navigate }) => (
 );
 PropertyCard.propTypes = {
   property: PropTypes.object.isRequired,
-  userPermission: PropTypes.string,
   navigate: PropTypes.func.isRequired,
 };
 
-/**
- * Página principal (Dashboard) da aplicação, responsável por buscar e exibir
- * a lista de propriedades associadas ao usuário autenticado.
- */
 const Home = () => {
+  // O componente agora consome o hook, que encapsula toda a lógica de busca.
+  const { properties, loading, error } = useUserProperties();
+  const { usuario: currentUser } = useAuth();
   const navigate = useNavigate();
-  const { usuario, token } = useContext(AuthContext);
-
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  /**
-   * Memoiza o objeto do usuário logado para evitar recálculos desnecessários.
-   */
-  const currentUser = useMemo(() => {
-    try {
-      return usuario || JSON.parse(localStorage.getItem('usuario'));
-    } catch (e) {
-      return null;
-    }
-  }, [usuario]);
-  
-  /**
-   * Busca todas as propriedades e as filtra para exibir apenas
-   * aquelas que pertencem ao usuário atual.
-   */
-  const fetchData = useCallback(async () => {
-    if (!currentUser?.id) {
-      navigate(paths.login);
-      return;
-    }
-    const accessToken = token || localStorage.getItem('accessToken');
-    if (!accessToken) {
-      navigate(paths.login);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await axios.get(`${API_BASE_URL}/property`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        params: { limit: 100 }
-      });
-      
-      const allProps = response.data?.data?.properties || [];
-      
-      // Filtra as propriedades para exibir apenas aquelas onde o usuário atual é um membro.
-      // A verificação é feita contra o ID do usuário aninhado (`u.usuario.id`).
-      const userProps = allProps.filter((p) =>
-        p.usuarios.some((u) => String(u.usuario?.id) === String(currentUser.id))
-      );
-      
-      setProperties(userProps);
-    } catch (err) {
-      setError('Não foi possível carregar suas propriedades. Por favor, tente novamente mais tarde.');
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser, token, navigate]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   /**
    * Renderiza o conteúdo principal da página com base nos estados de
-   * carregamento, erro ou sucesso.
+   * carregamento, erro ou sucesso, providos pelo hook 'useUserProperties'.
    */
   const renderContent = () => {
     if (loading) {
@@ -183,17 +105,13 @@ const Home = () => {
       <section>
         <h2 className="text-xl font-semibold mb-4">Suas Propriedades</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {properties.map((prop) => {
-            const userLink = prop.usuarios.find(u => String(u.usuario?.id) === String(currentUser.id));
-            return (
-              <PropertyCard 
-                key={prop.id} 
-                property={prop}
-                userPermission={userLink?.permissao}
-                navigate={navigate} 
-              />
-            );
-          })}
+          {properties.map((prop) => (
+            <PropertyCard 
+              key={prop.id} 
+              property={prop}
+              navigate={navigate} 
+            />
+          ))}
         </div>
       </section>
     );
@@ -201,17 +119,15 @@ const Home = () => {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      <Sidebar user={currentUser} />
+      <Sidebar />
       <main className="flex-1 p-6 ml-0 md:ml-64">
         <div className="flex justify-center mb-4">
           <img src={logoQota} alt="Logo QOTA" className="h-20 sm:h-24" />
         </div>
-
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold">Bem-vindo(a) à sua Dashboard</h1>
           <p className="text-gray-600 mt-1">Gerencie suas propriedades de forma rápida e eficiente.</p>
         </div>
-
         <div className="flex justify-center mb-8">
           <Link
             to={paths.registrarPropriedade}
@@ -220,7 +136,6 @@ const Home = () => {
             + Cadastrar Nova Propriedade
           </Link>
         </div>
-
         {renderContent()}
       </main>
     </div>

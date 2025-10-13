@@ -1,82 +1,72 @@
+// Todos direitos autorais reservados pelo QOTA.
+
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { AuthContext } from './AuthContext';
-// Todos direitos autorais reservados pelo QOTA.
+// --- MUDANÇA 1: Importa o 'api' e a nova função 'setAuthToken' ---
+import api, { setAuthToken } from '../services/api';
 
-/**
- * AuthProvider
- *
- * Componente responsável por prover o contexto de autenticação para a aplicação.
- * Armazena e gerencia o usuário autenticado e o token de acesso.
- */
 const AuthProvider = ({ children }) => {
-  const [usuario, setUsuario] = useState(null); // Estado para dados do usuário autenticado
-  const [token, setToken] = useState(null);     // Estado para o token JWT
+  // ... (useState e useEffect de restoreSession permanecem os mesmos) ...
+  const [usuario, setUsuario] = useState(null);
+  const [token, setToken] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  /**
-   * Efeito responsável por sincronizar os dados de autenticação com o localStorage.
-   * Também escuta eventos 'storage' para manter múltiplas abas sincronizadas.
-   */
   useEffect(() => {
-    const handleStorageChange = () => {
-      const storedUser = localStorage.getItem('usuario');
-      const storedToken = localStorage.getItem('accessToken');
-
-      if (storedUser && storedToken) {
-        setUsuario(JSON.parse(storedUser));
-        setToken(storedToken);
+    const restoreSession = async () => {
+      try {
+        const response = await api.post('/auth/refresh'); 
+        const { accessToken, ...userData } = response.data.data;
+        login(userData, accessToken);
+      } catch (error) {
+        console.log("Nenhuma sessão ativa encontrada para restaurar.");
+      } finally {
+        setAuthLoading(false);
       }
     };
-
-    // Ouvinte para mudanças no localStorage (ex: logout em outra aba)
-    window.addEventListener('storage', handleStorageChange);
-
-    // Verificação inicial ao montar o componente
-    handleStorageChange();
-
-    // Cleanup ao desmontar
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    
+    restoreSession();
   }, []);
 
-  /**
-   * login
-   *
-   * Atualiza o estado de autenticação e salva os dados no localStorage.
-   * @param {Object} usuario - Objeto do usuário autenticado
-   * @param {string} token - Token JWT recebido após autenticação
-   */
-  const login = (usuario, token) => {
-    setUsuario(usuario);
-    setToken(token);
-    localStorage.setItem('usuario', JSON.stringify(usuario));
-    localStorage.setItem('accessToken', token); // Padronização do nome da chave
+  const login = (usuarioData, tokenData) => {
+    setUsuario(usuarioData);
+    setToken(tokenData);
+    localStorage.setItem('usuario', JSON.stringify(usuarioData));
+    // --- MUDANÇA 2: Avisa o serviço da API qual é o novo token ---
+    setAuthToken(tokenData);
   };
 
-  /**
-   * logout
-   *
-   * Limpa o estado de autenticação e remove os dados do localStorage.
-   */
-  const logout = () => {
-    setUsuario(null);
-    setToken(null);
-    localStorage.removeItem('usuario');
-    localStorage.removeItem('accessToken');
-    // Mensagem de sucesso poderia ser emitida por Toast ou Context de UI, se necessário
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error("Falha ao notificar o servidor sobre o logout:", error);
+    } finally {
+      setUsuario(null);
+      setToken(null);
+      localStorage.removeItem('usuario');
+      // --- MUDANÇA 3: Avisa o serviço da API que não há mais token ---
+      setAuthToken(null);
+    }
+  };
+
+  const updateUser = (newUserData) => {
+    setUsuario(newUserData);
+    localStorage.setItem('usuario', JSON.stringify(newUserData));
+  };
+
+  const contextValue = {
+    usuario,
+    token,
+    isAuthenticated: !!token,
+    authLoading,
+    login,
+    logout,
+    updateUser,
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        usuario,
-        token,
-        login,
-        logout,
-        isAuthenticated: !!token, // Valor booleano indicando se o usuário está autenticado
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,18 +1,20 @@
 // Todos direitos autorais reservados pelo QOTA.
 
-
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
 import paths from '../../routes/paths';
-import { Mail, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { AuthContext } from '../../context/AuthContext';
+// ... (outros imports) ...
 import LoginImage from '../../assets/login.png';
 import SuaLogo from '../../assets/Ln QOTA Branca.png'; 
+import { Mail, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [statusMessage, setStatusMessage] = useState(null);
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -20,16 +22,18 @@ const LoginForm = () => {
     setStatusMessage(null);
 
     try {
-      const response = await axios.post('http://localhost:8001/api/v1/auth/login', {
-        email,
-        password: senha,
-      });
+      // 1. Faz o login para obter o token e os dados.
+      const loginResponse = await api.post('/auth/login', { email, password: senha });
+      const { accessToken, ...userData } = loginResponse.data.data;
+      
+      // --- MUDANÇA PRINCIPAL ---
+      // 2. Chama a função de login do contexto. Ela vai salvar o usuário,
+      //    salvar o token no estado E chamar setAuthToken para o Axios.
+      login(userData, accessToken);
 
-      const { accessToken, id, email: userEmail } = response.data.data;
-
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('usuario', JSON.stringify({ id, email: userEmail }));
-      window.dispatchEvent(new Event('storage'));
+      // 3. A segunda chamada de API foi removida. O endpoint de login agora
+      //    DEVE retornar os dados completos do usuário para otimizar.
+      //    (Se não retornar, precisaremos ajustar o backend de login).
 
       navigate(paths.home);
     } catch (error) {
@@ -40,6 +44,7 @@ const LoginForm = () => {
     }
   };
 
+  // ... (o JSX do return permanece exatamente o mesmo) ...
   return (
     <div className="flex h-screen">
       {/* Formulário à esquerda - 30% */}
@@ -130,5 +135,4 @@ const LoginForm = () => {
     </div>
   );
 };
-
 export default LoginForm;

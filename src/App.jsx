@@ -5,64 +5,54 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import CookieConsent from "react-cookie-consent";
 
-// Contexto e Rotas
+// Contexto, Rotas e Componentes de Proteção
 import AuthProvider from './context/AuthProvider';
 import paths from './routes/paths';
+import ProtectedRoute from './components/ProtectedRoute'; // Importa o componente de rota protegida.
 
-// Páginas Principais
+// Páginas Públicas
 import LoginPage from './pages/LoginPage';
-import Home from './pages/Home';
-import RegisterProperty from './pages/RegisterProperty';
 import RegisterUser from './pages/RegisterUser';
-import EditProfile from './pages/EditProfile';
-import PropertyDetails from './pages/PropertyDetails';
-import ReservationDetailsPage from './pages/ReservationDetailsPage'; 
-
-
-// Páginas Legais (LGPD) e de Gestão
+import AcceptInvitePage from './pages/AcceptInvitePage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+
+// Páginas Protegidas (requerem autenticação)
+import Home from './pages/Home';
+import RegisterProperty from './pages/RegisterProperty';
+import EditProfile from './pages/EditProfile';
+import PropertyDetails from './pages/PropertyDetails';
 import PropertyMembersPage from './pages/PropertyMembersPage';
-import AcceptInvitePage from './pages/AcceptInvitePage';
 import FinancialDashboard from './pages/FinancialDashboard';
 import CalendarPage from './pages/CalendarPage';
+import ReservationDetailsPage from './pages/ReservationDetailsPage'; 
+
 /**
  * Componente raiz da aplicação.
- * Responsável por gerenciar o provedor de autenticação, o roteamento de páginas
- * e a configuração global de notificações (toasts).
+ * Responsável por gerenciar o provedor de autenticação, o roteamento de páginas,
+ * a proteção de rotas e a configuração global de notificações.
  */
 export default function App() {
   return (
     <AuthProvider>
-      {/* Configuração global para todas as notificações (toasts) da aplicação.
-        - position: Define que os alertas aparecerão no centro superior da tela.
-        - toastOptions: Define estilos e durações padrão.
-      */}
       <Toaster 
         position="top-center"
-        // Esta propriedade aplica um estilo CSS diretamente no container dos alertas,
-        // forçando uma margem de px a partir do topo da tela.
-        containerStyle={{
-          top: 50,
-        }}
+        containerStyle={{ top: 50 }}
         toastOptions={{
-          // Define uma duração padrão mais longa para todos os toasts.
-          duration: 8000, //  segundos
-          
-          // Estilos específicos para cada tipo de notificação.
+          duration: 8000,
           success: {
-            duration: 6000, //  segundos para sucesso
+            duration: 6000,
             style: {
-              background: '#dcfce7', // Verde claro
-              color: '#166534',      // Verde escuro
+              background: '#dcfce7',
+              color: '#166534',
               border: '1px solid #166534',
             },
           },
           error: {
-            duration: 8000, // segundos para erros
+            duration: 8000,
             style: {
-              background: '#fee2e2', // Vermelho claro
-              color: '#991b1b',      // Vermelho escuro
+              background: '#fee2e2',
+              color: '#991b1b',
               border: '1px solid #991b1b',
             },
           },
@@ -71,24 +61,29 @@ export default function App() {
       
       <Router>
         <Routes>
+          {/* --- Rotas Públicas --- */}
+          {/* Estas rotas são acessíveis para qualquer visitante, autenticado ou não. */}
           <Route path="/" element={<LoginPage />} />
           <Route path={paths.login} element={<LoginPage />} />
           <Route path={paths.cadastro} element={<RegisterUser />} />
-           <Route path={paths.home} element={<Home />} />
-          <Route path={paths.registrarPropriedade} element={<RegisterProperty />} />
-          <Route path={paths.editarPerfil} element={<EditProfile />} />
-          <Route path={paths.propriedade} element={<PropertyDetails />} />
+          <Route path={paths.aceitarConvite} element={<AcceptInvitePage />} />
           <Route path="/termos-de-uso" element={<TermsPage />} />
           <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
-          <Route path={paths.gerenciarMembros} element={<PropertyMembersPage />} />
-          <Route path={paths.aceitarConvite} element={<AcceptInvitePage />} />
-          <Route path={paths.financeiro} element={<FinancialDashboard />} />
-          <Route path={paths.calendario} element={<CalendarPage />} />
-          <Route path={paths.detalhesReserva} element={<ReservationDetailsPage />} /> 
 
+          {/* --- Rotas Protegidas --- */}
+          {/* Envolve as páginas que exigem autenticação com o componente 'ProtectedRoute'.
+              Ele verifica o estado de autenticação antes de renderizar a página solicitada,
+              melhorando a segurança e a experiência do usuário. */}
+          <Route path={paths.home} element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path={paths.registrarPropriedade} element={<ProtectedRoute><RegisterProperty /></ProtectedRoute>} />
+          <Route path={paths.editarPerfil} element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+          <Route path={paths.propriedade} element={<ProtectedRoute><PropertyDetails /></ProtectedRoute>} />
+          <Route path={paths.gerenciarMembros} element={<ProtectedRoute><PropertyMembersPage /></ProtectedRoute>} />
+          <Route path={paths.financeiro} element={<ProtectedRoute><FinancialDashboard /></ProtectedRoute>} />
+          <Route path={paths.calendario} element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+          <Route path={paths.detalhesReserva} element={<ProtectedRoute><ReservationDetailsPage /></ProtectedRoute>} /> 
         </Routes>
 
-        {/* Componente para o banner de consentimento de cookies. */}
         <CookieConsent
           location="bottom"
           buttonText="Entendi e aceito"
