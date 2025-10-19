@@ -1,148 +1,127 @@
+// Todos direitos autorais reservados pelo QOTA.
+
 /**
- * @file RegisterProperty.jsx
- * @description Página de formulário para o cadastro de novas propriedades no sistema,
- * com validação de documentos em tempo real utilizando IA (OCR) e formatação de campos.
+ * Página de Cadastro de Propriedade
+ *
+ * Descrição:
+ * Este arquivo define a página de formulário para o cadastro de novas propriedades.
+ * O componente gerencia um formulário multi-etapas, lida com a validação de
+ * comprovante de endereço via OCR em tempo real e orquestra o envio dos dados
+ * e arquivos para a API.
+ *
+ * Funcionalidades:
+ * - Formulário para dados básicos, de endereço e de frações da propriedade.
+ * - Integração com a API ViaCEP para preenchimento automático de endereço.
+ * - Validação de comprovante de endereço (PDF) com o serviço de OCR.
+ * - Upload de múltiplas fotos para a propriedade.
+ * - Feedback visual para o usuário durante as validações e submissão.
+ * - Modal de ajuda para explicar conceitos-chave ao usuário.
  */
-import React, { useState, useContext, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PropTypes from 'prop-types';
-import axios from 'axios';
 import toast from 'react-hot-toast';
-
-import { AuthContext } from '../context/AuthContext';
+import api from '../services/api';
+import useAuth from '../hooks/useAuth';
 import paths from '../routes/paths';
-
 import Sidebar from '../components/layout/Sidebar';
-import { Building, DollarSign, MapPin, Tag, UploadCloud, FileText, Image as ImageIcon, X, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import Dialog from '../components/ui/dialog';
+import { FormSection, InputField, SelectField, CurrencyInputField, FileInput, FilePreview } from '../components/ui/FormComponents';
+import { Building, Tag, MapPin, ImageIcon, Hash, DollarSign, Loader2, HelpCircle } from 'lucide-react';
+import clsx from 'clsx';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
-
+// --- Estado Inicial e Constantes ---
 const initialFormState = {
-  nomePropriedade: '',
-  valorEstimado: '',
-  tipo: '',
-  enderecoCep: '',
-  enderecoCidade: '',
-  enderecoBairro: '',
-  enderecoLogradouro: '',
-  enderecoNumero: '',
-  enderecoComplemento: '',
-  enderecoPontoReferencia: '',
-  documento: null,
-  fotos: [],
+  nomePropriedade: '', tipo: '', totalFracoes: '52', valorEstimado: '',
+  enderecoCep: '', enderecoCidade: '', enderecoBairro: '', enderecoLogradouro: '',
+  enderecoNumero: '', enderecoComplemento: '', enderecoPontoReferencia: '',
+  documento: null, fotos: [],
 };
-
 const tiposPropriedade = ['Casa', 'Apartamento', 'Chacara', 'Lote', 'Outros'];
 
 const RegisterProperty = () => {
-  const { usuario, token } = useContext(AuthContext);
+  // --- Hooks e Estado ---
+  const { usuario } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState(initialFormState);
-  const [loading, setLoading] = useState(false);
-  const [documentStatus, setDocumentStatus] = useState('idle'); // 'idle', 'validating', 'success', 'error'
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [documentStatus, setDocumentStatus] = useState('idle');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false); 
 
+  // --- Manipuladores de Eventos (Otimizados) ---
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   }, []);
 
-  /**
-   * @function handleDocumentChange
-   * @description Acionado quando um arquivo de documento é selecionado. Inicia o processo
-   * de validação em tempo real com a API de OCR.
-   */
-const handleDocumentChange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const handleDocumentChange = useCallback(async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  setForm(prev => ({ ...prev, documento: file }));
-  setDocumentStatus('validating');
-  const loadingToast = toast.loading('Validando documento com IA...');
+    setForm(prev => ({ ...prev, documento: file }));
+    setDocumentStatus('validating');
+    const loadingToast = toast.loading('Validando documento com IA...');
 
-  // Monta o endereço completo para validação
-  const fullAddress = `${form.enderecoLogradouro}, ${form.enderecoNumero}`;
-  
-  // Verifica se os campos essenciais estão preenchidos
-  if (fullAddress.length < 5 || form.enderecoCep.length < 8) {
-    toast.error('Por favor, preencha o CEP e o endereço completo antes de validar.', { id: loadingToast });
-    setDocumentStatus('error');
-    setForm(prev => ({ ...prev, documento: null })); // Limpa o arquivo se os dados estiverem incompletos
-    return;
-  }
+    const { enderecoLogradouro, enderecoNumero, enderecoCep } = form;
+    if (!enderecoLogradouro || !enderecoNumero || !enderecoCep) {
+      toast.error('Preencha o CEP e o endereço completo antes de validar.', { id: loadingToast });
+      setDocumentStatus('error');
+      setForm(prev => ({ ...prev, documento: null }));
+      return;
+    }
 
-  const formData = new FormData();
-  formData.append('documento', file);
-  formData.append('address', fullAddress);
-  formData.append('cep', form.enderecoCep); 
+    const formData = new FormData();
+    formData.append('documento', file);
+    formData.append('address', `${enderecoLogradouro}, ${enderecoNumero}`);
+    formData.append('cep', enderecoCep);
 
     try {
-      await axios.post(`${API_URL}/validation/address`, formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post('/validation/address', formData);
       setDocumentStatus('success');
       toast.success('Documento validado com sucesso!', { id: loadingToast });
     } catch (error) {
       setDocumentStatus('error');
       toast.error(error.response?.data?.message || 'Falha na validação do documento.', { id: loadingToast });
-      
-      // Remove o arquivo inválido do estado do formulário.
       setForm(prev => ({ ...prev, documento: null }));
     }
-  };
+  }, [form]);
 
-  /**
-   * Manipula a seleção de arquivos de foto, garantindo que apenas
-   * arquivos de imagem sejam adicionados ao estado do formulário.
-   */
-  const handlePhotosChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-
-    // Filtra a seleção para incluir apenas arquivos cujo tipo comece com "image/".
-    const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
-
-    // Se algum arquivo foi filtrado (ex: um PDF foi selecionado), notifica o usuário.
-    if (imageFiles.length !== selectedFiles.length) {
-      toast.error('Apenas arquivos de imagem (JPG, PNG, etc.) são permitidos nesta seção.');
+  const handlePhotosChange = useCallback((e) => {
+    const imageFiles = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length !== e.target.files.length) {
+      toast.error('Apenas arquivos de imagem (JPG, PNG, etc.) são permitidos.');
     }
-
     if (form.fotos.length + imageFiles.length > 15) {
       toast.error('Você pode enviar no máximo 15 fotos.');
       return;
     }
-
-    // Adiciona apenas os arquivos de imagem válidos ao estado.
     setForm(prev => ({ ...prev, fotos: [...prev.fotos, ...imageFiles] }));
-  };
+  }, [form.fotos]);
 
-  const removeFile = (fileType, index) => {
+  const removeFile = useCallback((fileType, index) => {
     if (fileType === 'documento') {
       setForm(prev => ({ ...prev, documento: null }));
       setDocumentStatus('idle');
     } else if (fileType === 'foto') {
       setForm(prev => ({ ...prev, fotos: prev.fotos.filter((_, i) => i !== index) }));
     }
-  };
+  }, []);
 
+  // --- Efeito para Busca de CEP ---
   useEffect(() => {
     const cep = form.enderecoCep.replace(/\D/g, '');
     if (cep.length === 8) {
       const fetchCep = async () => {
         try {
-          const { data } = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
+          const { data } = await api.get(`https://viacep.com.br/ws/${cep}/json/`);
           if (!data.erro) {
-            setForm(prev => ({
-              ...prev,
-              enderecoLogradouro: data.logradouro,
-              enderecoBairro: data.bairro,
-              enderecoCidade: data.localidade,
-            }));
+            setForm(prev => ({ ...prev, enderecoLogradouro: data.logradouro, enderecoBairro: data.bairro, enderecoCidade: data.localidade }));
             toast.success('Endereço preenchido automaticamente!');
           } else {
             toast.error('CEP não encontrado.');
           }
         } catch (error) {
-          console.error("Erro ao buscar CEP:", error);
           toast.error('Não foi possível buscar o CEP.');
         }
       };
@@ -150,222 +129,163 @@ const handleDocumentChange = async (e) => {
     }
   }, [form.enderecoCep]);
 
-const handleSubmit = async (e) => {
+// --- Submissão do Formulário ---
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (documentStatus !== 'success') {
       toast.error('Por favor, valide um comprovante de endereço antes de continuar.');
       return;
     }
-    setLoading(true);
+    setIsSubmitting(true);
     const loadingToast = toast.loading('Cadastrando propriedade...');
 
-    const accessToken = token || localStorage.getItem('accessToken');
-    if (!accessToken || !usuario?.id) {
-      toast.error('Autenticação inválida. Faça login novamente.');
-      setLoading(false);
-      toast.dismiss(loadingToast);
-      return;
-    }
-
-    const propertyData = {
-      nomePropriedade: form.nomePropriedade,
-      valorEstimado: parseFloat(form.valorEstimado.replace(/\./g, '').replace(',', '.')) || null,
-      tipo: form.tipo,
-      enderecoCep: form.enderecoCep.replace(/\D/g, ''),
-      enderecoCidade: form.enderecoCidade,
-      enderecoBairro: form.enderecoBairro,
-      enderecoLogradouro: form.enderecoLogradouro,
-      enderecoNumero: form.enderecoNumero,
-      enderecoComplemento: form.enderecoComplemento,
-      enderecoPontoReferencia: form.enderecoPontoReferencia,
-      userId: usuario.id,
-    };
-
     try {
-      // Etapa 1: Criar a propriedade
-      const propResponse = await axios.post(`${API_URL}/property/create`, propertyData, { headers: { Authorization: `Bearer ${accessToken}` } });
-      
-      const propertyId = propResponse.data.data.id;
-      if (!propertyId) {
-        throw new Error("A API não retornou o ID da propriedade criada.");
-      }
+      // Etapa 1: Criar a propriedade com os dados do formulário
+      const propResponse = await api.post('/property/create', {
+        nomePropriedade: form.nomePropriedade,
+        tipo: form.tipo,
+        totalFracoes: parseInt(form.totalFracoes, 10),
+        valorEstimado: parseFloat(form.valorEstimado.replace(/\./g, '').replace(',', '.')) || null,
+        enderecoCep: form.enderecoCep.replace(/\D/g, ''),
+        enderecoCidade: form.enderecoCidade,
+        enderecoBairro: form.enderecoBairro,
+        enderecoLogradouro: form.enderecoLogradouro,
+        enderecoNumero: form.enderecoNumero,
+        enderecoComplemento: form.enderecoComplemento,
+        enderecoPontoReferencia: form.enderecoPontoReferencia,
+      });
 
-      // Etapa 2: Fazer upload dos arquivos (só executa se a Etapa 1 for bem-sucedida)
+      const propertyId = propResponse.data.data.id;
+      if (!propertyId) throw new Error("A API não retornou o ID da propriedade criada.");
+
+      // Etapa 2: Fazer upload dos arquivos em paralelo
       toast.loading('Enviando arquivos...', { id: loadingToast });
       const uploadPromises = [];
+
       if (form.documento) {
         const docFormData = new FormData();
         docFormData.append('documento', form.documento);
         docFormData.append('idPropriedade', propertyId.toString());
         docFormData.append('tipoDocumento', 'Comprovante_Endereco');
-        uploadPromises.push(axios.post(`${API_URL}/propertyDocuments/upload`, docFormData, { headers: { Authorization: `Bearer ${accessToken}` } }));
+        uploadPromises.push(api.post('/propertyDocuments/upload', docFormData));
       }
       
       form.fotos.forEach(foto => {
         const fotoFormData = new FormData();
         fotoFormData.append('foto', foto);
         fotoFormData.append('idPropriedade', propertyId.toString());
-        uploadPromises.push(axios.post(`${API_URL}/propertyPhoto/upload`, fotoFormData, { headers: { Authorization: `Bearer ${accessToken}` } }));
+        uploadPromises.push(api.post('/propertyPhoto/upload', fotoFormData));
       });
 
       await Promise.all(uploadPromises);
 
       toast.success('Propriedade cadastrada com sucesso!', { id: loadingToast });
-      setForm(initialFormState);
       navigate(paths.home);
-
     } catch (err) {
       toast.error(err.response?.data?.message || 'Erro ao cadastrar. Verifique os campos.', { id: loadingToast });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
-  };
+  }, [form, documentStatus, navigate]);
 
-  return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar user={usuario} />
-      <main className="flex-1 p-4 sm:p-6 ml-0 sm:ml-64 flex flex-col items-center">
-        <div className="w-full max-w-4xl">
-          <header className="mb-6 text-center sm:text-left">
-            <h1 className="text-3xl font-bold text-gray-800">Cadastrar Nova Propriedade</h1>
-            <p className="text-gray-500 mt-1">Preencha as informações para adicionar um novo bem à sua conta.</p>
-          </header>
+return (
+    <>
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar 
+          collapsed={sidebarCollapsed} 
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+        />
+        
+        <main className={clsx(
+          "flex-1 p-4 sm:p-6 flex flex-col items-center transition-all duration-300",
+          sidebarCollapsed ? 'ml-20' : 'ml-64'
+        )}>
+          <div className="w-full max-w-4xl">
+            <header className="mb-6 text-center sm:text-left">
+              <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-800">Cadastrar Nova Propriedade</h1>
+                    <p className="text-gray-500 mt-1">Preencha as informações para adicionar um novo bem à sua conta.</p>
+                </div>
+                <button onClick={() => setIsHelpModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg font-medium hover:bg-blue-200 transition">
+                    <HelpCircle size={18} />
+                    <span>Manual</span>
+                </button>
+              </div>
+            </header>
 
-          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md space-y-8">
-            <FormSection title="Informações Básicas" icon={<Building size={20} />}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField required label="Nome da Propriedade" name="nomePropriedade" value={form.nomePropriedade} onChange={handleInputChange} icon={<Tag size={16} />} />
-                <SelectField required label="Tipo de Propriedade" name="tipo" value={form.tipo} onChange={handleInputChange} options={tiposPropriedade} />
-                <CurrencyInputField label="Valor Estimado" name="valorEstimado" value={form.valorEstimado} onChange={handleInputChange} icon={<DollarSign size={16} />} />
-              </div>
-            </FormSection>
+            <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md space-y-8">
+              {/* Seção de Informações Básicas */}
+              <FormSection title="Informações Básicas" icon={<Building size={20} />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <InputField required label="Nome da Propriedade" name="nomePropriedade" value={form.nomePropriedade} onChange={handleInputChange} icon={<Tag size={16} />} />
+                  <SelectField required label="Tipo de Propriedade" name="tipo" value={form.tipo} onChange={handleInputChange} options={tiposPropriedade} />
+                  <CurrencyInputField label="Valor Estimado" name="valorEstimado" value={form.valorEstimado} onChange={handleInputChange} icon={<DollarSign size={16} />} />
+                  <InputField required label="Número Total de Frações" name="totalFracoes" type="number" min="1" max="52" value={form.totalFracoes} onChange={handleInputChange} icon={<Hash size={16} />} />
+                </div>
+              </FormSection>
 
-            <FormSection title="Endereço e Validação" icon={<MapPin size={20} />}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField required label="CEP" name="enderecoCep" value={form.enderecoCep} onChange={handleInputChange} maxLength={9} />
-                <InputField required label="Cidade" name="enderecoCidade" value={form.enderecoCidade} onChange={handleInputChange} className="md:col-span-2" />
-                <InputField required label="Bairro" name="enderecoBairro" value={form.enderecoBairro} onChange={handleInputChange} />
-                <InputField required label="Logradouro" name="enderecoLogradouro" value={form.enderecoLogradouro} onChange={handleInputChange} className="md:col-span-2" />
-                <InputField required label="Número" name="enderecoNumero" value={form.enderecoNumero} onChange={handleInputChange} />
-                <InputField label="Complemento" name="enderecoComplemento" value={form.enderecoComplemento} onChange={handleInputChange} className="md:col-span-2" />
-                <InputField label="Ponto de Referência" name="enderecoPontoReferencia" value={form.enderecoPontoReferencia} onChange={handleInputChange} className="md:col-span-3" />
-              </div>
-              <div className="pt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Comprovante de Endereço (APENAS PDF)</label>
-                {form.documento ? (
-                  <div className="flex items-center gap-3 p-2 border rounded-md bg-gray-50">
-                    <FileText size={20} className="text-gray-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 truncate flex-grow">{form.documento.name}</span>
-                    <div className="flex-shrink-0 flex items-center gap-2">
-                      {documentStatus === 'validating' && <Loader2 size={20} className="animate-spin text-blue-500" />}
-                      {documentStatus === 'success' && <CheckCircle size={20} className="text-green-500" />}
-                      {documentStatus === 'error' && <XCircle size={20} className="text-red-500" />}
-                      <button type="button" onClick={() => removeFile('documento')} className="text-red-500 hover:text-red-700"><X size={18} /></button>
-                    </div>
-                  </div>
-                ) : (
-                  <FileInput name="documento" onChange={handleDocumentChange} accept=".pdf" />
-                )}
-              </div>
-            </FormSection>
+              {/* Seção de Endereço e Validação */}
+              <FormSection title="Endereço e Validação" icon={<MapPin size={20} />}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField required label="CEP" name="enderecoCep" value={form.enderecoCep} onChange={handleInputChange} maxLength={9} />
+                    <InputField required label="Cidade" name="enderecoCidade" value={form.enderecoCidade} onChange={handleInputChange} className="md:col-span-2" />
+                    <InputField required label="Bairro" name="enderecoBairro" value={form.enderecoBairro} onChange={handleInputChange} />
+                    <InputField required label="Logradouro" name="enderecoLogradouro" value={form.enderecoLogradouro} onChange={handleInputChange} className="md:col-span-2" />
+                    <InputField required label="Número" name="enderecoNumero" value={form.enderecoNumero} onChange={handleInputChange} />
+                    <InputField label="Complemento" name="enderecoComplemento" value={form.enderecoComplemento} onChange={handleInputChange} className="md:col-span-2" />
+                </div>
+                <div className="pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Comprovante de Endereço (APENAS PDF)</label>
+                  {form.documento ? (
+                    <FilePreview file={form.documento} status={documentStatus} onRemove={() => removeFile('documento')} />
+                  ) : (
+                    <FileInput name="documento" onChange={handleDocumentChange} accept=".pdf" />
+                  )}
+                </div>
+              </FormSection>
 
             <FormSection title="Fotos da Propriedade" icon={<ImageIcon size={20} />}>
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Adicione até 15 fotos</label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mb-2">
                   {form.fotos.map((file, index) => (
-                    <div key={index} className="relative group aspect-square">
-                      <img src={URL.createObjectURL(file)} alt={`Preview ${index}`} className="w-full h-full object-cover rounded-md" />
-                      <button type="button" onClick={() => removeFile('foto', index)} className="absolute top-1 right-1 bg-red-600/70 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={12} />
-                      </button>
-                    </div>
+                    <FilePreview key={index} file={file} isImage onRemove={() => removeFile('foto', index)} />
                   ))}
                 </div>
                 {form.fotos.length < 15 && (
                   <FileInput name="fotos" onChange={handlePhotosChange} accept="image/*" multiple />
                 )}
-              </div>
             </FormSection>
 
-            <div className="flex justify-end pt-4 border-t">
-              <button
-                type="submit"
-                disabled={loading || documentStatus !== 'success'}
-                className="px-8 py-3 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Cadastrando...' : 'Cadastrar Propriedade'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </main>
-    </div>
+      {/* Botão de Submissão */}
+              <div className="flex justify-end pt-4 border-t">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || documentStatus !== 'success'}
+                  className="px-8 py-3 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {isSubmitting ? <Loader2 className="animate-spin" /> : 'Cadastrar Propriedade'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </main>
+      </div>
+
+      {/* Modal de Ajuda */}
+      <Dialog isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} title="Manual de Cadastro">
+          <div className="p-6 space-y-4 text-gray-700">
+              <h4 className="font-bold">Número Total de Frações</h4>
+              <p className="text-sm">Este campo define em quantas partes a propriedade será dividida. O padrão é 52, representando as semanas do ano. Cada fração dará direito a um número de dias de uso por ano (ex: 365 / 52 ≈ 7 dias).</p>
+              <h4 className="font-bold">Comprovante de Endereço</h4>
+              <p className="text-sm">Para garantir a segurança, você precisa enviar um comprovante de endereço válido em formato PDF. Preencha os campos de endereço e CEP, e depois envie o arquivo. Nossa IA irá validar se o endereço no documento corresponde ao que foi digitado.</p>
+              <div className="flex justify-end pt-4 mt-4 border-t">
+                  <button onClick={() => setIsHelpModalOpen(false)} className="px-6 py-2 bg-black text-white rounded-md font-semibold">Entendi</button>
+              </div>
+          </div>
+      </Dialog>
+    </>
   );
 };
-
-// --- Componentes Auxiliares ---
-const FormSection = ({ title, icon, children }) => (
-  <section>
-    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
-      {icon}{title}
-    </h3>
-    <div className="space-y-4">{children}</div>
-  </section>
-);
-FormSection.propTypes = { title: PropTypes.string.isRequired, icon: PropTypes.node, children: PropTypes.node.isRequired };
-
-const InputField = ({ label, name, icon, className, ...props }) => (
-  <div className={className}>
-    <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-    <div className="relative">
-      {icon && <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">{icon}</div>}
-      <input id={name} name={name} {...props} className={`w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-gold ${icon ? 'pl-9' : 'pl-3'}`} />
-    </div>
-  </div>
-);
-InputField.propTypes = { label: PropTypes.string.isRequired, name: PropTypes.string.isRequired, icon: PropTypes.node, className: PropTypes.string };
-
-const SelectField = ({ label, name, options, ...props }) => (
-  <div>
-    <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-    <select id={name} name={name} {...props} className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-gold">
-      <option value="">Selecione...</option>
-      {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-    </select>
-  </div>
-);
-SelectField.propTypes = { label: PropTypes.string.isRequired, name: PropTypes.string.isRequired, options: PropTypes.arrayOf(PropTypes.string).isRequired };
-
-const FileInput = (props) => (
-  <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gold transition-colors">
-    <ImageIcon size={24} className="mx-auto text-gray-400" />
-    <p className="mt-1 text-sm text-gray-600">Arraste e solte ou <span className="font-semibold text-gold">clique aqui</span></p>
-    <input type="file" {...props} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-  </div>
-);
-
-/**
- * @component CurrencyInputField
- * @description InputField especializado para formatação de moeda BRL em tempo real.
- */
-const CurrencyInputField = ({ label, name, value, onChange, icon }) => {
-  const handleCurrencyChange = (e) => {
-    const rawValue = e.target.value.replace(/\D/g, '');
-    if (rawValue === '') {
-      onChange({ target: { name, value: '' } });
-      return;
-    }
-    const formattedValue = new Intl.NumberFormat('pt-BR', {
-      style: 'decimal',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(parseFloat(rawValue) / 100);
-    onChange({ target: { name, value: formattedValue } });
-  };
-  
-  return <InputField label={label} name={name} value={value} onChange={handleCurrencyChange} icon={icon} placeholder="0,00" />;
-};
-CurrencyInputField.propTypes = { label: PropTypes.string.isRequired, name: PropTypes.string.isRequired, value: PropTypes.string, onChange: PropTypes.func.isRequired, icon: PropTypes.node };
 
 export default RegisterProperty;

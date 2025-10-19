@@ -1,0 +1,27 @@
+/* Todos direitos autorais reservados pelo QOTA. */
+
+/**
+ * Estilos Customizados para a Página do Calendário
+ *
+ * Descrição:
+ * Este arquivo contém as customizações de CSS para o componente BigCalendar,
+ * melhorando a experiência do usuário e a interatividade.
+ */
+
+/*
+ * Melhora a UX ao indicar que os dias e slots são clicáveis.
+ * - `cursor: pointer`: Muda o cursor do mouse para uma "mãozinha".
+ * - `transition-colors`: Suaviza a mudança de cor.
+ * - `&:hover`: Aplica um fundo sutil ao passar o mouse.
+ */
+.rbc-day-bg.hoverable-day:hover,
+.rbc-time-slot.hoverable-slot:hover {
+  cursor: pointer;
+  background-color: #fefce8; /* Um amarelo bem claro, alinhado com a paleta 'gold' */
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* Garante que os eventos do calendário fiquem por cima do efeito de hover do dia */
+.rbc-event {
+  z-index: 10;
+}

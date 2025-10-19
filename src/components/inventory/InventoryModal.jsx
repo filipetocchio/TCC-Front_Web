@@ -1,179 +1,203 @@
 // Todos direitos autorais reservados pelo QOTA.
 
-import React, { useEffect } from 'react';
-import PropTypes from 'prop-types';
-import { X, UploadCloud, Trash2 } from 'lucide-react';
-import toast from 'react-hot-toast';
-
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1').replace('/api/v1', '');
-
 /**
- * Componente de modal para adicionar ou editar itens do inventário.
- * Ele opera de forma controlada, recebendo seu estado e funções de manipulação via props,
- * sem gerenciar um estado interno para as fotos existentes.
+ * Componente InventoryModal
+ *
+ * Descrição:
+ * Este arquivo define um modal completo para a criação e edição de itens de
+ * inventário. O componente é autônomo, gerenciando seu próprio estado de formulário,
+ * lógica de submissão, upload de fotos e tratamento de erros.
+ *
+ * Funcionalidades:
+ * - Opera em dois modos: 'criação' ou 'edição', com base na prop `itemToEdit`.
+ * - Gerencia o upload de novas fotos e a exclusão de fotos existentes.
+ * - Valida o número máximo de fotos por item.
+ * - Fornece feedback visual de carregamento (`isSubmitting`) durante as operações de API.
+ * - Otimizado com `useCallback` para melhor performance.
  */
-const InventoryModal = ({
-  isOpen,
-  onClose,
-  formData,
-  setFormData,
-  handleSubmit,
-  itemToEdit,
-  onPhotoDelete
-}) => {
+import React, { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
+import toast from 'react-hot-toast';
+import api from '../../services/api';
+import Dialog from '../ui/dialog';
+import { FileInput, FilePreview } from '../ui/FormComponents';
+import { Trash2, Loader2 } from 'lucide-react';
 
-  /**
-   * Efeito para inicializar ou resetar o estado do formulário
-   * sempre que o modal é aberto ou o item de edição muda.
-   */
+const API_BASE_URL = import.meta.env.VITE_API_URL.replace('/api/v1', '');
+
+const getInitialState = (propertyId) => ({
+  idPropriedade: propertyId,
+  nome: '',
+  quantidade: 1,
+  estadoConservacao: 'BOM',
+  categoria: '',
+  descricao: '',
+  fotos: [],
+  photoFiles: [],
+});
+
+const InventoryModal = ({ isOpen, onClose, itemToEdit, propertyId, isMaster }) => {
+  const [formData, setFormData] = useState(getInitialState(propertyId));
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       if (itemToEdit) {
-        // No modo de edição, preenche o formulário com os dados do item.
-        // O clone profundo evita mutações acidentais do estado original.
-        setFormData({ ...JSON.parse(JSON.stringify(itemToEdit)), photoFiles: [] });
+        setFormData({ ...itemToEdit, photoFiles: [] });
       } else {
-        // No modo de criação, reseta o formulário para o estado inicial.
-        setFormData({ nome: '', quantidade: 1, estadoConservacao: 'BOM', categoria: '', descricao: '', fotos: [], photoFiles: [] });
+        setFormData(getInitialState(propertyId));
       }
     }
-  }, [itemToEdit, isOpen, setFormData]);
+  }, [itemToEdit, isOpen, propertyId]);
 
-  if (!isOpen) return null;
-
-  /**
-   * Atualiza o estado do formulário conforme o usuário interage com os campos.
-   */
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const { name, value, type } = e.target;
     const processedValue = type === 'number' && value !== '' ? parseInt(value, 10) : value;
     setFormData(prev => ({ ...prev, [name]: processedValue }));
-  };
-  
-  /**
-   * Adiciona novos arquivos de foto ao estado do formulário para pré-visualização.
-   */
- /**
-   * Adiciona novos arquivos de foto ao estado do formulário, garantindo
-   * que apenas arquivos de imagem sejam aceitos.
-   */
-  const handleFileChange = (e) => {
-    if (e.target.files.length === 0) return;
-    const selectedFiles = Array.from(e.target.files);
+  }, []);
 
-    // Filtra para incluir apenas arquivos cujo tipo MIME comece com "image/".
-    const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
-
-    // Se algum arquivo foi filtrado, notifica o usuário.
-    if (imageFiles.length !== selectedFiles.length) {
-      toast.error('Apenas arquivos de imagem (JPG, PNG, etc.) são permitidos.');
+  const handleFileChange = useCallback((e) => {
+    const imageFiles = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length !== e.target.files.length) {
+      toast.error('Apenas arquivos de imagem são permitidos.');
     }
-
-    // Validação de limite de fotos
     const totalPhotos = (formData.fotos?.length || 0) + (formData.photoFiles?.length || 0) + imageFiles.length;
     if (totalPhotos > 6) {
       toast.error('Você pode ter no máximo 6 fotos por item.');
       return;
     }
-    
-    // Adiciona apenas os arquivos de imagem válidos ao estado para pré-visualização.
     setFormData(prev => ({ ...prev, photoFiles: [...(prev.photoFiles || []), ...imageFiles] }));
-  };
+  }, [formData.fotos, formData.photoFiles]);
 
-  /**
-   * Remove uma foto da lista de pré-visualização antes de ser enviada.
-   */
-  const removeNewFile = (index) => {
+  const removeNewFile = useCallback((index) => {
     setFormData(prev => ({ ...prev, photoFiles: prev.photoFiles.filter((_, i) => i !== index) }));
-  };
+  }, []);
+
+  const handlePhotoDelete = useCallback(async (photoId) => {
+    if (!isMaster) {
+        toast.error("Apenas proprietários master podem excluir fotos.");
+        return;
+    }
+    const loadingToast = toast.loading('Excluindo foto...');
+    try {
+      await api.delete(`/inventoryPhoto/${photoId}`);
+      setFormData(prev => ({ ...prev, fotos: prev.fotos.filter(p => p.id !== photoId) }));
+      toast.success('Foto excluída com sucesso!', { id: loadingToast });
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Não foi possível excluir a foto.', { id: loadingToast });
+    }
+  }, [isMaster]);
+
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    const isEditing = !!itemToEdit;
+    const loadingToast = toast.loading(isEditing ? 'Atualizando item...' : 'Adicionando item...');
+    
+    try {
+      const { photoFiles, fotos, ...itemData } = formData;
+      let targetItemId = itemToEdit?.id;
+
+      if (isEditing) {
+        if (isMaster) {
+          await api.put(`/inventory/${itemToEdit.id}`, itemData);
+        } else {
+            toast.error("Apenas proprietários master podem editar itens.");
+            throw new Error("Permissão negada");
+        }
+      } else {
+        const response = await api.post('/inventory/create', itemData);
+        targetItemId = response.data.data.id;
+      }
+
+      if (photoFiles && photoFiles.length > 0) {
+        toast.loading('Enviando fotos...', { id: loadingToast });
+        const uploadPromises = photoFiles.map(file => {
+          const photoFormData = new FormData();
+          photoFormData.append('photo', file);
+          photoFormData.append('idItemInventario', targetItemId);
+          return api.post('/inventoryPhoto/upload', photoFormData);
+        });
+        await Promise.all(uploadPromises);
+      }
+
+      toast.success(isEditing ? 'Item atualizado!' : 'Item adicionado!', { id: loadingToast });
+      onClose();
+    } catch (err) {
+      // Evita exibir o toast de erro se a mensagem for de permissão negada
+      if (err.message !== "Permissão negada") {
+        toast.error(err.response?.data?.message || 'Ocorreu um erro ao salvar o item.', { id: loadingToast });
+      } else {
+        toast.dismiss(loadingToast);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [formData, itemToEdit, onClose, isSubmitting, isMaster]);
 
   const modalTitle = itemToEdit ? 'Editar Item do Inventário' : 'Adicionar Item ao Inventário';
   const totalPhotosCount = (formData.fotos?.length || 0) + (formData.photoFiles?.length || 0);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-black max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4 pb-4 border-b">
-          <h2 className="text-xl font-bold">{modalTitle}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-red-500 transition-colors"><X size={24} /></button>
+    <Dialog isOpen={isOpen} onClose={onClose} title={modalTitle}>
+      <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Nome do Item *</label>
+          <input type="text" name="nome" value={formData.nome || ''} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nome do Item *</label>
-            <input type="text" name="nome" value={formData.nome || ''} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Quantidade *</label>
-              <input type="number" name="quantidade" value={formData.quantidade || 1} onChange={handleInputChange} required min="1" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Estado de Conservação *</label>
-              <select name="estadoConservacao" value={formData.estadoConservacao || 'BOM'} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                <option value="BOM">Bom</option><option value="NOVO">Novo</option><option value="DESGASTADO">Desgastado</option><option value="DANIFICADO">Danificado</option>
-              </select>
-            </div>
+            <label className="block text-sm font-medium text-gray-700">Quantidade *</label>
+            <input type="number" name="quantidade" value={formData.quantidade || 1} onChange={handleInputChange} required min="1" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Categoria</label>
-            <input type="text" name="categoria" value={formData.categoria || ''} onChange={handleInputChange} placeholder="Ex: Cozinha, Eletrônicos..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+            <label className="block text-sm font-medium text-gray-700">Estado de Conservação *</label>
+            <select name="estadoConservacao" value={formData.estadoConservacao || 'BOM'} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+              <option value="BOM">Bom</option><option value="NOVO">Novo</option><option value="DESGASTADO">Desgastado</option><option value="DANIFICADO">Danificado</option>
+            </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Descrição (Opcional)</label>
-            <textarea name="descricao" value={formData.descricao || ''} onChange={handleInputChange} rows="3" placeholder="Ex: Modelo, cor, voltagem..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Categoria</label>
+          <input type="text" name="categoria" value={formData.categoria || ''} onChange={handleInputChange} placeholder="Ex: Cozinha, Eletrônicos..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Descrição (Opcional)</label>
+          <textarea name="descricao" value={formData.descricao || ''} onChange={handleInputChange} rows="3" placeholder="Ex: Modelo, cor, voltagem..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Fotos ({totalPhotosCount} de 6)</label>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
+            {formData.fotos?.map(photo => (
+              <FilePreview key={`existing-${photo.id}`} isImage imageUrl={`${API_BASE_URL}${photo.url}`} onRemove={() => handlePhotoDelete(photo.id)} file={{name: `Foto ${photo.id}`}}/>
+            ))}
+            {formData.photoFiles?.map((file, index) => (
+              <FilePreview key={`new-${index}`} file={file} isImage onRemove={() => removeNewFile(index)} />
+            ))}
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Fotos ({totalPhotosCount} de 6)</label>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
-              {/* Renderiza as fotos existentes diretamente do 'formData', garantindo que a UI esteja sempre sincronizada. */}
-              {formData.fotos?.map(photo => (
-                <div key={`existing-${photo.id}`} className="relative group aspect-square">
-                  <img src={`${API_BASE_URL}${photo.url}`} alt="Item" className="w-full h-full object-cover rounded-md" />
-                  <button type="button" onClick={() => onPhotoDelete(photo.id)} className="absolute top-1 right-1 bg-red-600/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-              {/* Renderiza a pré-visualização das novas fotos. */}
-              {formData.photoFiles?.map((file, index) => (
-                <div key={`new-${index}`} className="relative group aspect-square">
-                  <img src={URL.createObjectURL(file)} alt={file.name} className="w-full h-full object-cover rounded-md" />
-                  <button type="button" onClick={() => removeNewFile(index)} className="absolute top-1 right-1 bg-red-600/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            {totalPhotosCount < 6 && (
-              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-yellow-500 transition-colors">
-                <UploadCloud className="mx-auto h-10 w-10 text-gray-400" />
-                <p className="mt-2 text-sm text-gray-600">Adicionar fotos</p>
-                <input type="file" multiple accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t mt-6">
-            <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition font-semibold">Cancelar</button>
-            <button type="submit" className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition font-semibold">Salvar</button>
-          </div>
-        </form>
-      </div>
-    </div>
+          {totalPhotosCount < 6 && (
+            <FileInput name="photoFiles" onChange={handleFileChange} multiple accept="image/*" />
+          )}
+        </div>
+        <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition font-semibold disabled:opacity-50">Cancelar</button>
+          <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition font-semibold flex justify-center items-center w-28 disabled:bg-gray-400">
+            {isSubmitting ? <Loader2 className="animate-spin" /> : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 };
 
 InventoryModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  formData: PropTypes.object.isRequired,
-  setFormData: PropTypes.func.isRequired,
-  handleSubmit: PropTypes.func.isRequired,
   itemToEdit: PropTypes.object,
-  onPhotoDelete: PropTypes.func.isRequired,
+  propertyId: PropTypes.number,
+  isMaster: PropTypes.bool.isRequired,
 };
 
 export default InventoryModal;
-

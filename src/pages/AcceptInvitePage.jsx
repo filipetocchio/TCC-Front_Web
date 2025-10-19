@@ -1,33 +1,52 @@
-/**
- * @file AcceptInvitePage.jsx
- * @description Página pública onde um usuário pode visualizar e aceitar um convite para uma propriedade.
- */
 // Todos direitos autorais reservados pelo QOTA.
 
-
-import React, { useEffect, useState, useContext } from 'react';
+/**
+ * Página de Aceitação de Convite
+ *
+ * Descrição:
+ * Este arquivo define a página pública onde um usuário pode visualizar e aceitar um
+ * convite para se juntar a uma propriedade.
+ *
+ * Fluxo de Lógica:
+ * 1.  Extrai o token de convite da URL e o envia para a API para verificação.
+ * 2.  Com base na resposta da API, exibe os detalhes do convite (quem convidou,
+ * para qual propriedade e por quantas frações).
+ * 3.  Guia o usuário para a ação correta:
+ * - Se já estiver logado, exibe o botão "Aceitar Convite".
+ * - Se o e-mail do convite já tem uma conta mas o usuário não está logado,
+ * direciona para o login.
+ * - Se o e-mail é novo, direciona para a página de cadastro.
+ * 4.  Fornece feedback visual durante as operações de rede.
+ */
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import paths from '../routes/paths';
-import { Mail, CheckCircle, XCircle, LogIn, UserPlus } from 'lucide-react';
+import api from '../services/api';
+import { Mail, CheckCircle, XCircle, LogIn, UserPlus, Loader2 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
-
+/**
+ * Componente principal da página de aceitação de convite.
+ */
 const AcceptInvitePage = () => {
   const { token } = useParams();
-  const { usuario, token: authToken } = useContext(AuthContext);
+  const { usuario } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // --- Gerenciamento de Estado ---
   const [inviteDetails, setInviteDetails] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAccepting, setIsAccepting] = useState(false);
   const [error, setError] = useState('');
 
+  /**
+   * Efeito para verificar a validade do token de convite ao carregar a página.
+   */
   useEffect(() => {
     const verifyToken = async () => {
       try {
-        const response = await axios.get(`${API_URL}/invite/verify/${token}`);
+        const response = await api.get(`/invite/verify/${token}`);
         setInviteDetails(response.data.data);
       } catch (err) {
         setError(err.response?.data?.message || 'Ocorreu um erro ao verificar o convite.');
@@ -38,19 +57,28 @@ const AcceptInvitePage = () => {
     verifyToken();
   }, [token]);
 
-  const handleAccept = async () => {
+  /**
+   * Processa a aceitação do convite, enviando a requisição para a API.
+   */
+  const handleAccept = useCallback(async () => {
+    if (isAccepting) return;
+    
+    setIsAccepting(true);
     const loadingToast = toast.loading('Aceitando convite...');
+    
     try {
-      await axios.post(`${API_URL}/invite/accept/${token}`, {}, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      await api.post(`/invite/accept/${token}`);
       toast.success('Convite aceito com sucesso! Bem-vindo(a)!', { id: loadingToast });
       navigate(paths.home);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Não foi possível aceitar o convite.', { id: loadingToast });
+      setIsAccepting(false);
     }
-  };
+  }, [token, navigate, isAccepting]);
 
+  /**
+   * Renderiza o conteúdo da página com base no estado da verificação do token.
+   */
   const renderContent = () => {
     if (loading) {
       return <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold"></div>;
@@ -77,12 +105,17 @@ const AcceptInvitePage = () => {
           <Mail className="mx-auto h-12 w-12 text-gold" />
           <h2 className="mt-4 text-2xl font-bold">Você foi convidado!</h2>
           <p className="mt-2 text-gray-600">
-            <span className="font-semibold">{inviteDetails.convidadoPor}</span> convidou você ({inviteDetails.emailConvidado}) para se juntar à propriedade <span className="font-semibold">{inviteDetails.propriedade}</span>.
+            <span className="font-semibold">{inviteDetails.convidadoPor}</span> convidou você ({inviteDetails.emailConvidado}) para se juntar à propriedade <span className="font-semibold">{inviteDetails.propriedade}</span>, recebendo <span className="font-semibold">{inviteDetails.numeroDeFracoes}</span> fração(ões).
           </p>
           
           {isUserAuthenticated && (
-            <button onClick={handleAccept} className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition">
-              <CheckCircle size={20} /> Aceitar Convite
+            <button
+              onClick={handleAccept}
+              disabled={isAccepting}
+              className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400"
+            >
+              {isAccepting ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />}
+              {isAccepting ? 'Processando...' : 'Aceitar Convite'}
             </button>
           )}
 

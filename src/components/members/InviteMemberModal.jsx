@@ -1,74 +1,92 @@
-/**
- * @file InviteMemberModal.jsx
- * @description Componente de modal para proprietários master convidarem novos membros para uma propriedade.
- * Gerencia o estado do formulário de convite e a exibição do link gerado.
- */
 // Todos direitos autorais reservados pelo QOTA.
 
-import React, { useState } from 'react';
+/**
+ * Componente InviteMemberModal
+ *
+ * Descrição:
+ * Este arquivo define um componente de modal utilizado por proprietários master
+ * para convidar novos membros para uma propriedade. Ele gerencia o estado de um
+ * formulário de convite, lida com a submissão para a API e exibe o link de convite
+ * gerado para compartilhamento.
+ *
+ * Funcionalidades:
+ * - Coleta de e-mail, permissão e número de frações para o novo membro.
+ * - Fornece feedback visual durante o processo de criação do convite.
+ * - Exibe o link de convite gerado com uma funcionalidade de "copiar para a área de transferência".
+ * - Otimizado com `useCallback` para melhor performance.
+ */
+import { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import axios from 'axios';
 import toast from 'react-hot-toast';
-import { X, Send, Copy } from 'lucide-react';
+import api from '../../services/api';
+import { X, Send, Copy, Loader2 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
-
+// Estado inicial para o formulário do modal.
 const initialState = {
   email: '',
   permissao: 'proprietario_comum',
-  porcentagemCota: 0, // Novo campo
+  numeroDeFracoes: 0,
 };
 
-const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
+const InviteMemberModal = ({ isOpen, onClose, propertyId }) => {
+  // --- Gerenciamento de Estado ---
   const [formData, setFormData] = useState(initialState);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
 
-  const handleInputChange = (e) => {
+  /**
+   * Atualiza o estado do formulário de forma otimizada conforme o usuário digita.
+   */
+  const handleInputChange = useCallback((e) => {
     const { name, value, type } = e.target;
-    // Garante que a porcentagem seja tratada como número
-    const processedValue = type === 'number' ? parseFloat(value) : value;
+    // Garante que o número de frações seja tratado como um número inteiro.
+    const processedValue = type === 'number' ? parseInt(value, 10) : value;
     setFormData(prev => ({ ...prev, [name]: processedValue }));
-  };
+  }, []);
 
-  const handleInvite = async (e) => {
+  /**
+   * Processa a criação do convite, enviando os dados para a API.
+   */
+  const handleInvite = useCallback(async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (isLoading) return;
+
+    setIsLoading(true);
     const loadingToast = toast.loading('Criando convite...');
 
     try {
-      const response = await axios.post(
-        `${API_URL}/invite`,
-        {
-          emailConvidado: formData.email,
-          idPropriedade: propertyId,
-          permissao: formData.permissao,
-          porcentagemCota: formData.porcentagemCota, // Envia a nova informação
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await api.post('/invite', {
+        emailConvidado: formData.email,
+        idPropriedade: propertyId,
+        permissao: formData.permissao,
+        numeroDeFracoes: formData.numeroDeFracoes,
+      });
       setInviteLink(response.data.data.linkConvite);
       toast.success('Convite criado com sucesso!', { id: loadingToast });
     } catch (error) {
       toast.error(error.response?.data?.message || 'Não foi possível criar o convite.', { id: loadingToast });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, [formData, propertyId, isLoading]);
 
-  const copyToClipboard = () => {
+  /**
+   * Copia o link de convite gerado para a área de transferência do usuário.
+   */
+  const copyToClipboard = useCallback(() => {
     navigator.clipboard.writeText(inviteLink);
     toast.success('Link copiado!');
-  };
+  }, [inviteLink]);
 
-  const handleClose = () => {
+  /**
+   * Reseta o estado do modal e chama a função de fechamento do componente pai.
+   */
+  const handleClose = useCallback(() => {
     setFormData(initialState);
     setInviteLink('');
-    setLoading(false);
+    setIsLoading(false);
     onClose();
-  };
+  }, [onClose]);
 
   if (!isOpen) {
     return null;
@@ -84,47 +102,30 @@ const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
           </button>
         </div>
 
+        {/* Renderiza o formulário ou a tela de sucesso com o link */}
         {!inviteLink ? (
           <form onSubmit={handleInvite} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">E-mail do Convidado</label>
               <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                placeholder="email@exemplo.com"
+                type="email" id="email" name="email" value={formData.email}
+                onChange={handleInputChange} required placeholder="email@exemplo.com"
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
               />
             </div>
-
-            {/* Novo Campo de Porcentagem */}
             <div>
-              <label htmlFor="porcentagemCota" className="block text-sm font-medium text-gray-700">Porcentagem da Cota (%)</label>
+              <label htmlFor="numeroDeFracoes" className="block text-sm font-medium text-gray-700">Número de Frações</label>
               <input
-                type="number"
-                id="porcentagemCota"
-                name="porcentagemCota"
-                value={formData.porcentagemCota}
-                onChange={handleInputChange}
-                required
-                min="0"
-                max="100"
-                step="0.01"
-                placeholder="Ex: 25"
+                type="number" id="numeroDeFracoes" name="numeroDeFracoes" value={formData.numeroDeFracoes}
+                onChange={handleInputChange} required min="0" step="1"
+                placeholder="Ex: 1"
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
               />
             </div>
-            
             <div>
               <label htmlFor="permissao" className="block text-sm font-medium text-gray-700">Permissão</label>
               <select
-                id="permissao"
-                name="permissao"
-                value={formData.permissao}
-                onChange={handleInputChange}
+                id="permissao" name="permissao" value={formData.permissao} onChange={handleInputChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
               >
                 <option value="proprietario_comum">Proprietário Comum</option>
@@ -133,8 +134,9 @@ const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
             </div>
             <div className="flex justify-end gap-3 pt-4">
               <button type="button" onClick={handleClose} className="px-6 py-2 bg-gray-200 rounded-md font-semibold">Cancelar</button>
-              <button type="submit" disabled={loading} className="px-6 py-2 bg-black text-white rounded-md font-semibold flex items-center gap-2 disabled:bg-gray-400">
-                <Send size={16} /> {loading ? 'Criando...' : 'Criar Convite'}
+              <button type="submit" disabled={isLoading} className="px-6 py-2 bg-black text-white rounded-md font-semibold flex items-center gap-2 disabled:bg-gray-400">
+                {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
+                {isLoading ? 'Criando...' : 'Criar Convite'}
               </button>
             </div>
           </form>
@@ -145,9 +147,7 @@ const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
             </p>
             <div className="flex items-center gap-2 p-2 border border-gray-300 rounded-md bg-gray-50">
               <input
-                type="text"
-                readOnly
-                value={inviteLink}
+                type="text" readOnly value={inviteLink}
                 className="w-full bg-transparent text-sm text-gray-600 focus:outline-none"
               />
               <button onClick={copyToClipboard} className="p-2 bg-gray-200 rounded-md hover:bg-gray-300">
@@ -167,23 +167,12 @@ const InviteMemberModal = ({ isOpen, onClose, propertyId, token }) => {
 };
 
 InviteMemberModal.propTypes = {
-  /**
-   * Controla a visibilidade do modal.
-   */
+  /** Controla a visibilidade do modal. */
   isOpen: PropTypes.bool.isRequired,
-  /**
-   * Função para fechar o modal.
-   */
+  /** Função para fechar o modal. */
   onClose: PropTypes.func.isRequired,
-  /**
-   * O ID da propriedade para a qual o convite está sendo enviado.
-   */
-  propertyId: PropTypes.number,
-  /**
-   * O token de autenticação do usuário que está enviando o convite.
-   */
-  token: PropTypes.string,
+  /** O ID da propriedade para a qual o convite está sendo enviado. */
+  propertyId: PropTypes.number.isRequired,
 };
 
 export default InviteMemberModal;
-
