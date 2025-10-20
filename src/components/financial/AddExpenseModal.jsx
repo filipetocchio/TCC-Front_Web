@@ -41,7 +41,7 @@ const AddExpenseModal = ({ isOpen, onClose, propertyId, onExpenseAdded, expenseT
   const isEditing = !!expenseToEdit;
 
   /**
-   * Efeito para inicializar o estado do formulário quando o modal é aberto.
+   * Efeito para inicializar ou resetar o estado do formulário quando o modal é aberto.
    */
   useEffect(() => {
     if (isOpen) {
@@ -227,61 +227,60 @@ const AddExpenseModal = ({ isOpen, onClose, propertyId, onExpenseAdded, expenseT
                 )}
 
                 {activeTab === 'manual' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Descrição *</label>
-                <input type="text" name="descricao" value={formData.descricao} onChange={handleInputChange} required placeholder="Ex: Conta de Energia - Dez/2025" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <CurrencyInputField label="Valor Total" name="valor" value={formData.valor} onChange={handleInputChange} />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Data de Vencimento *</label>
-                  <input type="date" name="dataVencimento" value={formData.dataVencimento} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Categoria *</label>
-                <select name="categoria" value={formData.categoria} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
-                    <option value="">Selecione...</option>
-                    <option value="Energia">Energia</option>
-                    <option value="Água">Água</option>
-                    <option value="Internet">Internet</option>
-                    <option value="Gás">Gás</option>
-                    <option value="Condomínio">Condomínio</option>
-                    <option value="Imposto">Imposto</option>
-                    <option value="Manutenção">Manutenção</option>
-                    <option value="Reforma">Reforma</option>
-                    <option value="Outros">Outros</option>
-                </select>
-              </div>
+                    <>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Descrição *</label>
+                            <input type="text" name="descricao" value={formData.descricao} onChange={handleInputChange} required placeholder="Ex: Conta de Energia - Dez/2025" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <CurrencyInputField label="Valor Total" name="valor" value={formData.valor} onChange={handleInputChange} required />
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Data de Vencimento *</label>
+                                <input type="date" name="dataVencimento" value={formData.dataVencimento} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Categoria *</label>
+                            <select name="categoria" value={formData.categoria} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <option value="">Selecione...</option>
+                                <option value="Energia">Energia</option>
+                                <option value="Água">Água</option>
+                                <option value="Internet">Internet</option>
+                                <option value="Gás">Gás</option>
+                                <option value="Condomínio">Condomínio</option>
+                                <option value="Imposto">Imposto</option>
+                                <option value="Manutenção">Manutenção</option>
+                                <option value="Reforma">Reforma</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
 
-              <div className="space-y-4 rounded-md border p-4">
-                <div className="flex items-center">
-                  <input id="recorrente" name="recorrente" type="checkbox" checked={formData.recorrente} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold" />
-                  <label htmlFor="recorrente" className="ml-3 block text-sm font-medium text-gray-700">Despesa Recorrente</label>
-                </div>
-                {formData.recorrente && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
-                    <div>
-                      <label htmlFor="frequencia" className="block text-sm font-medium text-gray-700">Frequência</label>
-                      <select id="frequencia" name="frequencia" value={formData.frequencia} onChange={handleInputChange} required={formData.recorrente} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gold focus:ring-gold sm:text-sm">
-                        <option value="">Selecione...</option>
-                        <option value="DIARIO">Diário</option>
-                        <option value="SEMANAL">Semanal</option>
-                        <option value="MENSAL">Mensal</option>
-                        <option value="ANUAL">Anual</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="diaRecorrencia" className="block text-sm font-medium text-gray-700">Dia do Vencimento</label>
-                      <input type="number" id="diaRecorrencia" name="diaRecorrencia" value={formData.diaRecorrencia} onChange={handleInputChange} required={formData.recorrente} min="1" max="31" placeholder="Ex: 10" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gold focus:ring-gold sm:text-sm" />
-                    </div>
-                  </div>
-                )}
-              </div>
+                        <div className="space-y-4 rounded-md border p-4">
+                            <div className="flex items-center">
+                                <input id="recorrente" name="recorrente" type="checkbox" checked={formData.recorrente} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold" />
+                                <label htmlFor="recorrente" className="ml-3 block text-sm font-medium text-gray-700">Despesa Recorrente</label>
+                            </div>
+                            {formData.recorrente && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
+                                    <div>
+                                        <label htmlFor="frequencia" className="block text-sm font-medium text-gray-700">Frequência</label>
+                                        <select id="frequencia" name="frequencia" value={formData.frequencia} onChange={handleInputChange} required={formData.recorrente} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gold focus:ring-gold sm:text-sm">
+                                            <option value="">Selecione...</option>
+                                            <option value="DIARIO">Diário</option>
+                                            <option value="SEMANAL">Semanal</option>
+                                            <option value="MENSAL">Mensal</option>
+                                            <option value="ANUAL">Anual</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="diaRecorrencia" className="block text-sm font-medium text-gray-700">Dia do Vencimento</label>
+                                        <input type="number" id="diaRecorrencia" name="diaRecorrencia" value={formData.diaRecorrencia} onChange={handleInputChange} required={formData.recorrente} min="1" max="31" placeholder="Ex: 10" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gold focus:ring-gold sm:text-sm" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
-              {/* Seção para anexar um comprovante manualmente */}
-              <div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-700">Anexar Comprovantes (até 10)</label>
                             {isEditing && (
                                 <p className="text-xs text-amber-600 mt-1 mb-2">
@@ -290,11 +289,11 @@ const AddExpenseModal = ({ isOpen, onClose, propertyId, onExpenseAdded, expenseT
                             )}
                             <label htmlFor="file-upload" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md cursor-pointer transition-colors ${isDragging ? 'border-gold bg-amber-50' : 'border-gray-300'}`}>
                                 <div className="space-y-1 text-center">
-                                <Paperclip className="mx-auto h-12 w-12 text-gray-400" />
-                                <div className="text-sm text-gray-600">
-                                    <span className="font-medium text-gold hover:underline">Clique para selecionar</span><span> ou arraste e solte</span>
-                                </div>
-                                <p className="text-xs text-gray-500">Imagens ou PDF (máx. 5MB cada)</p>
+                                    <Paperclip className="mx-auto h-12 w-12 text-gray-400" />
+                                    <div className="text-sm text-gray-600">
+                                        <span className="font-medium text-gold hover:underline">Clique para selecionar</span><span> ou arraste e solte</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">Imagens ou PDF (máx. 5MB cada)</p>
                                 </div>
                             </label>
                             <input id="file-upload" name="file-upload" type="file" multiple className="sr-only" onChange={(e) => handleFileSelection(e.target.files)} accept="image/*,application/pdf" />
