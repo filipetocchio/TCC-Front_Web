@@ -6,7 +6,7 @@
  * Descrição:
  * Este arquivo define o componente responsável por exibir a seção de "Visão Geral"
  * do Dashboard Financeiro. Ele inclui os filtros de período, os cards de
- * estatísticas principais e o gráfico de despesas por categoria.
+ * estatísticas principais e o gráfico de despesas por categoria .
  *
  */
 import React from 'react';
