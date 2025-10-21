@@ -13,7 +13,6 @@ import React, { useState, useEffect, useCallback, useContext, useMemo } from 're
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-import { AuthContext } from '../context/AuthContext';
 import paths from '../routes/paths';
 import Sidebar from '../components/layout/Sidebar';
 import AddExpenseModal from '../components/financial/AddExpenseModal';
@@ -22,7 +21,7 @@ import FinancialStats from '../components/financial/FinancialStats';
 import ExpenseTable from '../components/financial/ExpenseTable';
 import Dialog from '../components/ui/dialog';
 import { NotificationBell, NotificationModal } from '../components/ui/NotificationComponents';
-import { ArrowLeft, PlusCircle, FileText, XCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, PlusCircle, FileText, XCircle, Loader2, CheckCheck } from 'lucide-react';
 import clsx from 'clsx';
 import useAuth from '../hooks/useAuth';
 
@@ -46,6 +45,7 @@ const FinancialDashboard = () => {
   const [expenseToEdit, setExpenseToEdit] = useState(null);
   const [viewingExpenseId, setViewingExpenseId] = useState(null);
   const [expenseToCancel, setExpenseToCancel] = useState(null);
+  const [expenseToMarkAsPaid, setExpenseToMarkAsPaid] = useState(null);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -104,8 +104,19 @@ const FinancialDashboard = () => {
   }, [propertyId, dashboardFilters.period, listFilters]);
 
   useEffect(() => {
-    fetchData(pagination.currentPage);
-  }, [fetchData, pagination.currentPage]);
+    // Garante que a busca ocorra na página correta quando os filtros mudam.
+    // Se o filtro mudou, busca a página 1.
+    const pageToFetch = listFilters.limit !== pagination.limit || listFilters.period !== (pagination.period || 'all') 
+      ? 1 
+      : pagination.currentPage;
+      
+    fetchData(pageToFetch);
+    
+    // Atualiza a paginação localmente se o filtro mudou, para refletir a busca da página 1.
+    if (pageToFetch === 1 && (listFilters.limit !== pagination.limit || listFilters.period !== (pagination.period || 'all'))) {
+      setPagination(prev => ({ ...prev, currentPage: 1, limit: listFilters.limit, period: listFilters.period }));
+    }
+  }, [listFilters, dashboardFilters.period, propertyId]);
 
   const unreadNotifications = useMemo(() => {
     if (!usuario || !notifications) return [];
@@ -154,6 +165,33 @@ const FinancialDashboard = () => {
     }
   }, [expenseToCancel, isSubmitting, fetchData, pagination.currentPage]);
 
+
+  /**
+   * Manipulador para confirmar a ação de marcar todos como pagos.
+   */
+  const handleConfirmMarkAllAsPaid = useCallback(async () => {
+    if (!expenseToMarkAsPaid || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    const loadingToast = toast.loading('Atualizando pagamentos...');
+    
+    try {
+      // Chama o novo endpoint da API
+      await api.put(`/financial/expense/${expenseToMarkAsPaid.id}/mark-all-paid`);
+      toast.success('Despesa marcada como paga!', { id: loadingToast });
+      
+      // Recarrega os dados da tabela para refletir a mudança
+      fetchData(pagination.currentPage);
+      
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Não foi possível atualizar os pagamentos.", { id: loadingToast });
+    } finally {
+      setExpenseToMarkAsPaid(null); // Fecha o diálogo
+      setIsSubmitting(false);
+    }
+  }, [expenseToMarkAsPaid, isSubmitting, fetchData, pagination.currentPage]);
+  
+  
   const handleGenerateReport = useCallback(async () => {
     setIsSubmitting(true);
     const loadingToast = toast.loading('Gerando seu relatório em PDF...');
@@ -253,6 +291,7 @@ const FinancialDashboard = () => {
                 onViewDetails={setViewingExpenseId}
                 onEdit={handleEditExpense}
                 onCancel={setExpenseToCancel}
+                onMarkAllAsPaid={setExpenseToMarkAsPaid}
                 isMaster={isMaster}
               />
             </div>
@@ -270,7 +309,8 @@ const FinancialDashboard = () => {
       />
       <ExpenseDetailsModal
         isOpen={!!viewingExpenseId}
-        onClose={() => { setViewingExpenseId(null); fetchData(pagination.currentPage); }}
+        // Garante que a tabela seja atualizada se algo mudar no modal
+        onClose={() => { setViewingExpenseId(null); fetchData(pagination.currentPage); }} 
         expenseId={viewingExpenseId}
       />
       <Dialog isOpen={!!expenseToCancel} onClose={() => setExpenseToCancel(null)} title="Confirmar Cancelamento">
@@ -284,6 +324,21 @@ const FinancialDashboard = () => {
           </div>
         </div>
       </Dialog>
+      
+      {/* Diálogo de Confirmação para Pagamento em Massa */}
+      <Dialog isOpen={!!expenseToMarkAsPaid} onClose={() => setExpenseToMarkAsPaid(null)} title="Confirmar Pagamento em Massa">
+        <div className="p-6">
+          <p className="text-gray-700 mb-6 text-lg">Você tem certeza que deseja marcar todos os pagamentos da despesa "{expenseToMarkAsPaid?.descricao}" como <strong>PAGOS</strong>?</p>
+          <p className="text-gray-600 text-sm mb-6">Esta ação não pode ser desfeita facilmente (exigiria marcar manualmente cada cotista como pendente novamente).</p>
+          <div className="flex justify-end gap-4">
+            <button disabled={isSubmitting} onClick={() => setExpenseToMarkAsPaid(null)} className="px-6 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-100 transition disabled:opacity-50">Cancelar</button>
+            <button disabled={isSubmitting} onClick={handleConfirmMarkAllAsPaid} className="px-6 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition flex items-center justify-center w-36 disabled:bg-green-400">
+              {isSubmitting ? <Loader2 className="animate-spin"/> : <><CheckCheck size={16} className="mr-2"/>Confirmar</>}
+            </button>
+          </div>
+        </div>
+      </Dialog>
+      
       <NotificationModal isOpen={isNotificationModalOpen} onClose={handleCloseNotificationModal} notifications={notifications} />
     </>
   );

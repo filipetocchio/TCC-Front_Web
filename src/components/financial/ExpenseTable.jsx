@@ -18,7 +18,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { MoreVertical, Eye, Edit2, XCircle } from 'lucide-react';
+import { MoreVertical, Eye, Edit2, XCircle, CheckCheck } from 'lucide-react';
 
 // --- Subcomponentes de UI ---
 
@@ -50,7 +50,7 @@ StatusBadge.propTypes = { status: PropTypes.string.isRequired };
 /**
  * Renderiza o menu de ações (dropdown) que se posiciona dinamicamente na tela.
  */
-const ActionMenu = ({ expense, onView, onEdit, onCancel, isMaster }) => {
+const ActionMenu = ({ expense, onView, onEdit, onCancel, onMarkAllAsPaid, isMaster }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState({});
   const buttonRef = useRef(null);
@@ -65,8 +65,8 @@ const ActionMenu = ({ expense, onView, onEdit, onCancel, isMaster }) => {
         right: `${window.innerWidth - rect.right}px`,
       };
 
-      // Se houver menos de 150px de espaço abaixo, abre para cima.
-      if (spaceBelow < 150) {
+      // Se houver menos de 200px (aumentado para segurança) de espaço abaixo, abre para cima.
+      if (spaceBelow < 200) { 
         style.bottom = `${window.innerHeight - rect.top}px`;
       } else {
         style.top = `${rect.bottom}px`;
@@ -78,6 +78,10 @@ const ActionMenu = ({ expense, onView, onEdit, onCancel, isMaster }) => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Garante que o clique não foi no próprio botão que abre o menu
+      if (buttonRef.current && buttonRef.current.contains(event.target)) {
+        return;
+      }
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setIsOpen(false);
       }
@@ -85,6 +89,12 @@ const ActionMenu = ({ expense, onView, onEdit, onCancel, isMaster }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Função helper para fechar o menu ao clicar em um item
+  const handleItemClick = (action) => {
+    action();
+    setIsOpen(false);
+  };
 
   return (
     // O container relativo é necessário apenas para o botão.
@@ -99,18 +109,27 @@ const ActionMenu = ({ expense, onView, onEdit, onCancel, isMaster }) => {
           style={menuStyle}
           className="fixed w-48 bg-white rounded-md shadow-lg z-50 ring-1 ring-black ring-opacity-5"
         >
-          <div className="py-1">
-            <a onClick={() => { onView(expense.id); setIsOpen(false); }} className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+          <div className="py-1" role="menu" aria-orientation="vertical">
+            <button onClick={() => handleItemClick(() => onView(expense.id))} className="w-full text-left cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
               <Eye size={16} /> Visualizar
-            </a>
+            </button>
             {isMaster && (
               <>
-                <a onClick={() => { onEdit(expense); setIsOpen(false); }} className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+<button onClick={() => handleItemClick(() => onEdit(expense))} className="w-full text-left cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
                   <Edit2 size={16} /> Editar
-                </a>
-                <a onClick={() => { onCancel(expense); setIsOpen(false); }} className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                </button>
+
+                {/* 4. "Marcar tudo como pago" */}
+                <button onClick={() => handleItemClick(() => onMarkAllAsPaid(expense))} className="w-full text-left cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                  <CheckCheck size={16} /> Marcar tudo como pago
+                </button>
+
+                {/* Separador visual para ações destrutivas */}
+                <div className="border-t my-1 border-gray-100" />
+                
+                <button onClick={() => handleItemClick(() => onCancel(expense))} className="w-full text-left cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50" role="menuitem">
                   <XCircle size={16} /> Cancelar
-                </a>
+                </button>
               </>
             )}
           </div>
@@ -119,17 +138,20 @@ const ActionMenu = ({ expense, onView, onEdit, onCancel, isMaster }) => {
     </div>
   );
 };
+
 ActionMenu.propTypes = {
     expense: PropTypes.object.isRequired,
     onView: PropTypes.func.isRequired,
     onEdit: PropTypes.func.isRequired,
     onCancel: PropTypes.func.isRequired,
+    onMarkAllAsPaid: PropTypes.func.isRequired, 
     isMaster: PropTypes.bool.isRequired,
 };
 
 // --- Componente Principal da Tabela ---
 
-const ExpenseTable = ({ expenses, loading, pagination, onPageChange, onViewDetails, onEdit, onCancel, isMaster }) => {
+// 2. Recebe a nova prop 'onMarkAllAsPaid'
+const ExpenseTable = ({ expenses, loading, pagination, onPageChange, onViewDetails, onEdit, onCancel, onMarkAllAsPaid, isMaster }) => {
   /**
    * Renderiza os "esqueletos" de carregamento para feedback visual.
    */
@@ -169,7 +191,15 @@ const ExpenseTable = ({ expenses, loading, pagination, onPageChange, onViewDetai
                 <td className="px-4 py-4 text-gray-500">{new Date(expense.dataVencimento).toLocaleDateString('pt-BR')}</td>
                 <td className="px-4 py-4"><StatusBadge status={expense.status} /></td>
                 <td className="px-4 py-4 text-right">
-                  <ActionMenu expense={expense} onView={onViewDetails} onEdit={onEdit} onCancel={onCancel} isMaster={isMaster} />
+                  {/* 3. Passa a prop para o ActionMenu */}
+                  <ActionMenu 
+                    expense={expense} 
+                    onView={onViewDetails} 
+                    onEdit={onEdit} 
+                    onCancel={onCancel} 
+                    onMarkAllAsPaid={onMarkAllAsPaid}
+                    isMaster={isMaster} 
+                  />
                 </td>
               </tr>
             ))
@@ -180,13 +210,28 @@ const ExpenseTable = ({ expenses, loading, pagination, onPageChange, onViewDetai
           )}
         </tbody>
       </table>
-      {/* Controles de Paginação */}
+      {/* Controles de Paginação*/}
       {!loading && pagination && pagination.totalPages > 1 && (
-        <div className="flex justify-between items-center mt-4">
-          <span className="text-sm text-gray-600">Página {pagination.currentPage} de {pagination.totalPages}</span>
+        <div className="flex justify-between items-center p-4 border-t border-gray-200">
+          <span className="text-sm text-gray-600">
+            Página <strong>{pagination.currentPage}</strong> de <strong>{pagination.totalPages}</strong> 
+            ({pagination.totalRecords} registros)
+          </span>
           <div className="flex gap-2">
-            <button onClick={() => onPageChange(pagination.currentPage - 1)} disabled={pagination.currentPage === 1} className="px-3 py-1 border rounded-md disabled:opacity-50">Anterior</button>
-            <button onClick={() => onPageChange(pagination.currentPage + 1)} disabled={pagination.currentPage === pagination.totalPages} className="px-3 py-1 border rounded-md disabled:opacity-50">Próximo</button>
+            <button 
+              onClick={() => onPageChange(pagination.currentPage - 1)} 
+              disabled={pagination.currentPage === 1} 
+              className="px-4 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50"
+            >
+              Anterior
+            </button>
+            <button 
+              onClick={() => onPageChange(pagination.currentPage + 1)} 
+              disabled={pagination.currentPage === pagination.totalPages} 
+              className="px-4 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50"
+            >
+              Próximo
+            </button>
           </div>
         </div>
       )}
@@ -202,6 +247,7 @@ ExpenseTable.propTypes = {
   onViewDetails: PropTypes.func.isRequired,
   onEdit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  onMarkAllAsPaid: PropTypes.func.isRequired, 
   isMaster: PropTypes.bool.isRequired,
 };
 
