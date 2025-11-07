@@ -1,29 +1,3 @@
-TCC-Front_Web
-
-## 🚀 Como Rodar o Projeto 
-
-### 1. Clone o repositório
-
-
-git clone https://github.com/filipetocchio/TCC-Front_Web.git
-cd TCC-Front_Web
-
-### 2. Instale as dependências
-
-npm install
-
-### 3. Execute o projeto
-
-npm run dev    
-
-
-Telas : 
-
-/login
-/Home
-/cadastro
-/RegistrarPropriedade
-
 # 📘 Visão Geral do Projeto
 
 Este documento descreve o escopo, estrutura técnica e principais funcionalidades do MVP (Produto Mínimo Viável) da aplicação de **Cadastro e Gerenciamento de Propriedades**. A plataforma tem como objetivo oferecer aos usuários a possibilidade de registrar propriedades, manter documentação organizada e, futuramente, gerenciar aspectos financeiros, uso compartilhado e administração de cotistas.
