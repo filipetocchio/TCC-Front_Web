@@ -28,6 +28,7 @@ import Dialog from '../components/ui/dialog';
 import { FormSection, InputField, SelectField, CurrencyInputField, FileInput, FilePreview } from '../components/ui/FormComponents';
 import { Building, Tag, MapPin, ImageIcon, Hash, DollarSign, Loader2, HelpCircle } from 'lucide-react';
 import clsx from 'clsx';
+import axios from 'axios';
 
 // --- Estado Inicial e Constantes ---
 const initialFormState = {
@@ -114,7 +115,7 @@ const RegisterProperty = () => {
     if (cep.length === 8) {
       const fetchCep = async () => {
         try {
-          const { data } = await api.get(`https://viacep.com.br/ws/${cep}/json/`);
+          const { data } = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
           if (!data.erro) {
             setForm(prev => ({ ...prev, enderecoLogradouro: data.logradouro, enderecoBairro: data.bairro, enderecoCidade: data.localidade }));
             toast.success('Endereço preenchido automaticamente!');
