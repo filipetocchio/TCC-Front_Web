@@ -28,11 +28,5 @@ npm run dev
 
 > **Nota:** A aplicação React estará acessível em `http://localhost:3000`.
 
-### Resumo da Execução
-
-Ao final, você terá 3 terminais abertos, cada um executando um serviço:
--   **Terminal 1 (OCR):** `python app.py`
--   **Terminal 2 (Backend):** `npm run dev`
--   **Terminal 3 (Frontend):** `npm run dev`
 
 Abra seu navegador em `http://localhost:3000` para acessar o sistema Qota.

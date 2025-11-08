@@ -1,0 +1,33 @@
+# Todos direitos autorais reservados pelo QOTA.
+
+name: Qota Frontend CI - Test & Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  frontend-ci:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install Project Dependencies
+        run: npm ci
+      
+      - name: Run Component Tests
+        run: npm test
+        
+      - name: Build Project for Production
+        run: npm run build
