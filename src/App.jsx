@@ -92,7 +92,6 @@ export default function App() {
           <Route path={paths.calendario} element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
           <Route path={paths.detalhesReserva} element={<ProtectedRoute><ReservationDetailsPage /></ProtectedRoute>} /> 
         </Routes>
-        </Router>
         {/* Componente para o banner de consentimento de cookies (LGPD). */}
         <CookieConsent
           location="bottom"
@@ -107,6 +106,8 @@ export default function App() {
             Política de Privacidade
           </Link>.
         </CookieConsent>
+      </Router>
+
       
     </AuthProvider>
   );
