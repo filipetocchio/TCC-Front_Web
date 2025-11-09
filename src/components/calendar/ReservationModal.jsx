@@ -35,51 +35,58 @@ const parseDateString = (dateString) => {
 // --- Subcomponentes para cada Passo ---
 
 const StepIndicator = React.memo(({ number, label, active }) => (
-    <div className="flex flex-col items-center">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${active ? 'bg-gold text-black' : 'bg-gray-200 text-gray-500'}`}>
-            {number}
-        </div>
-        <p className={`mt-1 text-xs font-semibold ${active ? 'text-black' : 'text-gray-400'}`}>{label}</p>
+  <div className="flex flex-col items-center">
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${active ? 'bg-gold text-black' : 'bg-gray-200 text-gray-500'}`}>
+      {number}
     </div>
+    <p className={`mt-1 text-xs font-semibold ${active ? 'text-black' : 'text-gray-400'}`}>{label}</p>
+  </div>
 ));
 StepIndicator.displayName = 'StepIndicator';
 StepIndicator.propTypes = { number: PropTypes.number, label: PropTypes.string, active: PropTypes.bool };
 
 const Step1_Dates = React.memo(({ formData, handleInputChange }) => (
-    <div className="space-y-4">
-        <div className="flex items-center gap-2"><Calendar size={20} className="text-gray-500"/> <h3 className="text-lg font-semibold">Selecione o Período</h3></div>
-        <div className="grid grid-cols-2 gap-4">
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Data de Início *</label>
-                <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Data de Fim *</label>
-                <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} required min={formData.startDate} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-            </div>
-        </div>
+  <div className="space-y-4">
+    <div className="flex items-center gap-2"><Calendar size={20} className="text-gray-500" /> <h3 className="text-lg font-semibold">Selecione o Período</h3></div>
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Data de Início *</label>
+        <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Data de Fim *</label>
+        <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} required min={formData.startDate} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
+      </div>
     </div>
+  </div>
 ));
 Step1_Dates.displayName = 'Step1_Dates';
 Step1_Dates.propTypes = { formData: PropTypes.object, handleInputChange: PropTypes.func };
 
 const Step2_Guests = React.memo(({ formData, handleInputChange }) => (
-    <div className="space-y-4">
-        <div className="flex items-center gap-2"><Users size={20} className="text-gray-500"/> <h3 className="text-lg font-semibold">Informe os Detalhes</h3></div>
-        <div>
-            <label className="block text-sm font-medium text-gray-700">Número de Hóspedes *</label>
-            <input type="number" name="numGuests" value={formData.numGuests} onChange={handleInputChange} required min="1" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-        </div>
+  <div className="space-y-4">
+    <div className="flex items-center gap-2"><Users size={20} className="text-gray-500" /> <h3 className="text-lg font-semibold">Informe os Detalhes</h3></div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700">Número de Hóspedes *</label>
+      <input type="number" name="numGuests" value={formData.numGuests} onChange={handleInputChange} required min="1" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
     </div>
+  </div>
 ));
 Step2_Guests.displayName = 'Step2_Guests';
 Step2_Guests.propTypes = { formData: PropTypes.object, handleInputChange: PropTypes.func };
 
-const Step3_Confirm = React.memo(({ formData, saldoDiarias }) => {
+const Step3_Confirm = React.memo(({ formData, saldoDiariasAtual, saldoDiariasFuturo }) => {
   const startDate = parseDateString(formData.startDate);
   const endDate = parseDateString(formData.endDate);
   const duration = startDate && endDate ? differenceInDays(endDate, startDate) : 0;
-  const saldoRestante = saldoDiarias - duration;
+
+  const anoAtual = new Date().getFullYear();
+  const anoDaReserva = startDate ? startDate.getFullYear() : anoAtual;
+
+  const isReservaFutura = anoDaReserva === anoAtual + 1;
+  const saldoUtilizado = isReservaFutura ? saldoDiariasFuturo : saldoDiariasAtual;
+  const saldoRestante = saldoUtilizado - duration;
+  const saldoLabel = isReservaFutura ? `Saldo ${anoAtual + 1}` : `Saldo ${anoAtual}`;
 
   return (
     <div className="space-y-3">
@@ -88,21 +95,24 @@ const Step3_Confirm = React.memo(({ formData, saldoDiarias }) => {
         <p><strong>Início:</strong> {startDate ? format(startDate, 'dd/MM/yyyy') : 'N/A'}</p>
         <p><strong>Fim:</strong> {endDate ? format(endDate, 'dd/MM/yyyy') : 'N/A'}</p>
         <p><strong>Hóspedes:</strong> {formData.numGuests}</p>
-        <hr className="my-2"/>
-        <p><strong>Saldo Atual:</strong> {Math.floor(saldoDiarias)} dias</p>
-        <p><strong>Dias a Utilizar:</strong> -{duration} dias</p>
-        <p className="font-bold"><strong>Saldo Restante:</strong> {Math.floor(saldoRestante)} dias</p>
+        <hr className="my-2" />
+        <p><strong>{saldoLabel} (Atual):</strong> {Math.floor(saldoUtilizado)} dias</p>
+        <p className="text-red-600"><strong>Dias a Utilizar:</strong> -{duration} dias</p>
+        <p className="font-bold"><strong>{saldoLabel} (Restante):</strong> {Math.floor(saldoRestante)} dias</p>
       </div>
-      <p className="text-xs text-gray-500">Ao confirmar, os dias serão debitados do seu saldo. O checklist do inventário será solicitado no check-in.</p>
+      {isReservaFutura && (
+        <p className="text-xs text-blue-600">Nota: Esta reserva será debitada do seu saldo de diárias do próximo ano.</p>
+      )}
+      <p className="text-xs text-gray-500">Ao confirmar, os dias serão debitados do saldo correspondente. O checklist do inventário será solicitado no check-in.</p>
     </div>
   );
 });
 Step3_Confirm.displayName = 'Step3_Confirm';
-Step3_Confirm.propTypes = { formData: PropTypes.object, saldoDiarias: PropTypes.number };
+Step3_Confirm.propTypes = { formData: PropTypes.object, saldoDiariasAtual: PropTypes.number, saldoDiariasFuturo: PropTypes.number };
 
 // --- Componente Principal do Modal ---
 
-const ReservationModal = ({ isOpen, onClose, initialDate, propertyRules, propertyId, saldoDiarias, onReservationCreated }) => {
+const ReservationModal = ({ isOpen, onClose, initialDate, propertyRules, propertyId, saldoDiariasAtual, saldoDiariasFuturo, onReservationCreated }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ startDate: '', endDate: '', numGuests: 1 });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,13 +154,26 @@ const ReservationModal = ({ isOpen, onClose, initialDate, propertyRules, propert
         toast.error(`A duração máxima da estadia é de ${propertyRules.maxStay} dias.`);
         return;
       }
-      if (duration > saldoDiarias) {
-        toast.error(`Sua reserva de ${duration} dias excede seu saldo de ${Math.floor(saldoDiarias)} diárias.`);
+      const anoAtual = new Date().getFullYear();
+      const anoDaReserva = start.getFullYear();
+
+      if (anoDaReserva === anoAtual) {
+        if (duration > saldoDiariasAtual) {
+          toast.error(`Sua reserva de ${duration} dias excede seu saldo de ${Math.floor(saldoDiariasAtual)} diárias para este ano.`);
+          return;
+        }
+      } else if (anoDaReserva === anoAtual + 1) {
+        if (duration > saldoDiariasFuturo) {
+          toast.error(`Sua reserva de ${duration} dias excede seu saldo de ${Math.floor(saldoDiariasFuturo)} diárias para o próximo ano.`);
+          return;
+        }
+      } else {
+        toast.error(`Não é possível criar reservas para o ano de ${anoDaReserva}.`);
         return;
       }
     }
     setStep(s => s + 1);
-  }, [step, formData, propertyRules, saldoDiarias]);
+  }, [step, formData, propertyRules, saldoDiariasAtual, saldoDiariasFuturo]);
 
   const handlePrevStep = () => setStep(s => s - 1);
 
@@ -181,42 +204,42 @@ const ReservationModal = ({ isOpen, onClose, initialDate, propertyRules, propert
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Novo Agendamento">
-        <div className="p-6">
-            {/* Indicador de Passos */}
-            <div className="flex justify-center items-center gap-4 mb-6">
-                <StepIndicator number={1} label="Datas" active={step >= 1} />
-                <div className="flex-1 h-px bg-gray-200"></div>
-                <StepIndicator number={2} label="Hóspedes" active={step >= 2} />
-                <div className="flex-1 h-px bg-gray-200"></div>
-                <StepIndicator number={3} label="Confirmar" active={step >= 3} />
-            </div>
-            
-            {/* Conteúdo do Passo Atual */}
-            <div className="space-y-4">
-                {step === 1 && <Step1_Dates formData={formData} handleInputChange={handleInputChange} />}
-                {step === 2 && <Step2_Guests formData={formData} handleInputChange={handleInputChange} />}
-                {step === 3 && <Step3_Confirm formData={formData} saldoDiarias={saldoDiarias} />}
-            </div>
-
-            {/* Navegação entre os Passos */}
-            <div className="flex justify-between mt-8 pt-4 border-t">
-                {step > 1 ? (
-                <button onClick={handlePrevStep} disabled={isSubmitting} className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-md font-semibold disabled:opacity-50">
-                    <ArrowLeft size={16} /> Voltar
-                </button>
-                ) : ( <div></div> )}
-
-                {step < 3 ? (
-                <button onClick={handleNextStep} className="flex items-center gap-2 px-4 py-2 bg-gold text-black rounded-md font-semibold">
-                    Próximo <ArrowRight size={16} />
-                </button>
-                ) : (
-                <button onClick={handleSubmit} disabled={isSubmitting} className="px-4 py-2 bg-black text-white rounded-md font-semibold disabled:bg-gray-400 flex justify-center items-center w-40">
-                    {isSubmitting ? <Loader2 className="animate-spin" /> : 'Confirmar Reserva'}
-                </button>
-                )}
-            </div>
+      <div className="p-6">
+        {/* Indicador de Passos */}
+        <div className="flex justify-center items-center gap-4 mb-6">
+          <StepIndicator number={1} label="Datas" active={step >= 1} />
+          <div className="flex-1 h-px bg-gray-200"></div>
+          <StepIndicator number={2} label="Hóspedes" active={step >= 2} />
+          <div className="flex-1 h-px bg-gray-200"></div>
+          <StepIndicator number={3} label="Confirmar" active={step >= 3} />
         </div>
+
+        {/* Conteúdo do Passo Atual */}
+        <div className="space-y-4">
+          {step === 1 && <Step1_Dates formData={formData} handleInputChange={handleInputChange} />}
+          {step === 2 && <Step2_Guests formData={formData} handleInputChange={handleInputChange} />}
+          {step === 3 && <Step3_Confirm formData={formData} saldoDiariasAtual={saldoDiariasAtual} saldoDiariasFuturo={saldoDiariasFuturo} />}
+        </div>
+
+        {/* Navegação entre os Passos */}
+        <div className="flex justify-between mt-8 pt-4 border-t">
+          {step > 1 ? (
+            <button onClick={handlePrevStep} disabled={isSubmitting} className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-md font-semibold disabled:opacity-50">
+              <ArrowLeft size={16} /> Voltar
+            </button>
+          ) : (<div></div>)}
+
+          {step < 3 ? (
+            <button onClick={handleNextStep} className="flex items-center gap-2 px-4 py-2 bg-gold text-black rounded-md font-semibold">
+              Próximo <ArrowRight size={16} />
+            </button>
+          ) : (
+            <button onClick={handleSubmit} disabled={isSubmitting} className="px-4 py-2 bg-black text-white rounded-md font-semibold disabled:bg-gray-400 flex justify-center items-center w-40">
+              {isSubmitting ? <Loader2 className="animate-spin" /> : 'Confirmar Reserva'}
+            </button>
+          )}
+        </div>
+      </div>
     </Dialog>
   );
 };
@@ -226,11 +249,12 @@ ReservationModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   initialDate: PropTypes.instanceOf(Date),
   propertyRules: PropTypes.shape({
-      minStay: PropTypes.number,
-      maxStay: PropTypes.number,
+    minStay: PropTypes.number,
+    maxStay: PropTypes.number,
   }).isRequired,
   propertyId: PropTypes.number.isRequired,
-  saldoDiarias: PropTypes.number.isRequired,
+  saldoDiariasAtual: PropTypes.number.isRequired,
+  saldoDiariasFuturo: PropTypes.number.isRequired,
   onReservationCreated: PropTypes.func.isRequired,
 };
 

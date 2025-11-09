@@ -47,48 +47,61 @@ const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales
 // --- Subcomponentes de UI ---
 
 const CustomToolbar = React.memo(({ onNavigate, label }) => (
-    <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-            <button onClick={() => onNavigate('PREV')} className="p-2 rounded-md hover:bg-gray-100"><ChevronLeft size={20}/></button>
-            <button onClick={() => onNavigate('NEXT')} className="p-2 rounded-md hover:bg-gray-100"><ChevronRight size={20}/></button>
-            <button onClick={() => onNavigate('TODAY')} className="px-4 py-2 text-sm font-semibold border rounded-md hover:bg-gray-50">Hoje</button>
-        </div>
-        <h2 className="text-xl font-bold capitalize text-gray-800">{label}</h2>
-        <div className="w-32"></div>
+  <div className="flex justify-between items-center mb-4">
+    <div className="flex items-center gap-2">
+      <button onClick={() => onNavigate('PREV')} className="p-2 rounded-md hover:bg-gray-100"><ChevronLeft size={20} /></button>
+      <button onClick={() => onNavigate('NEXT')} className="p-2 rounded-md hover:bg-gray-100"><ChevronRight size={20} /></button>
+      <button onClick={() => onNavigate('TODAY')} className="px-4 py-2 text-sm font-semibold border rounded-md hover:bg-gray-50">Hoje</button>
     </div>
+    <h2 className="text-xl font-bold capitalize text-gray-800">{label}</h2>
+    <div className="w-32"></div>
+  </div>
 ));
 CustomToolbar.displayName = 'CustomToolbar';
 CustomToolbar.propTypes = { onNavigate: PropTypes.func.isRequired, label: PropTypes.string.isRequired };
 
-const UserBalanceCard = React.memo(({ saldo }) => (
-    <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
-        <h3 className="text-md font-semibold text-gray-700">Seu Saldo</h3>
-        <p className="text-3xl font-bold text-green-600 mt-2">{Math.floor(saldo)}</p>
-        <p className="text-sm text-gray-500">dias disponíveis para agendar</p>
+const UserBalanceCard = React.memo(({ saldoAtual, saldoFuturo }) => {
+  const anoAtual = new Date().getFullYear();
+  const anoFuturo = anoAtual + 1;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border p-4">
+      <h3 className="text-md font-semibold text-gray-700 mb-3">Seu Saldo de Diárias</h3>
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600">Saldo {anoAtual}:</span>
+          <span className="text-2xl font-bold text-green-600">{Math.floor(saldoAtual)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600">Saldo {anoFuturo}:</span>
+          <span className="text-2xl font-bold text-blue-600">{Math.floor(saldoFuturo)}</span>
+        </div>
+      </div>
     </div>
-));
+  );
+});
 UserBalanceCard.displayName = 'UserBalanceCard';
-UserBalanceCard.propTypes = { saldo: PropTypes.number };
+UserBalanceCard.propTypes = { saldoAtual: PropTypes.number, saldoFuturo: PropTypes.number };
 
 const ReservationList = React.memo(({ title, icon, reservations, loading, onSelect }) => (
-    <div className="bg-white rounded-lg shadow-sm border p-4">
-        <h3 className="text-md font-semibold text-gray-700 flex items-center gap-2 mb-3">{icon} {title}</h3>
-        <div className="space-y-2 text-sm">
-            {loading ? <p className="text-gray-400">Carregando...</p> : reservations.length > 0 ? (
-                reservations.map(res => (
-                    <div key={res.id} className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50">
-                        <div>
-                            <p className="font-semibold text-gray-800">{res.usuario.nomeCompleto}</p>
-                            <p className="text-xs text-gray-500">{format(new Date(res.dataInicio), 'dd/MM/yy')} - {format(new Date(res.dataFim), 'dd/MM/yy')}</p>
-                        </div>
-                        <button onClick={() => onSelect(res.id)} className="text-blue-600 hover:underline text-xs font-semibold flex items-center gap-1">
-                            <Eye size={14}/> Ver Detalhes
-                        </button>
-                    </div>
-                ))
-            ) : <p className="text-gray-500">Nenhuma reserva encontrada.</p>}
-        </div>
+  <div className="bg-white rounded-lg shadow-sm border p-4">
+    <h3 className="text-md font-semibold text-gray-700 flex items-center gap-2 mb-3">{icon} {title}</h3>
+    <div className="space-y-2 text-sm">
+      {loading ? <p className="text-gray-400">Carregando...</p> : reservations.length > 0 ? (
+        reservations.map(res => (
+          <div key={res.id} className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50">
+            <div>
+              <p className="font-semibold text-gray-800">{res.usuario.nomeCompleto}</p>
+              <p className="text-xs text-gray-500">{format(new Date(res.dataInicio), 'dd/MM/yy')} - {format(new Date(res.dataFim), 'dd/MM/yy')}</p>
+            </div>
+            <button onClick={() => onSelect(res.id)} className="text-blue-600 hover:underline text-xs font-semibold flex items-center gap-1">
+              <Eye size={14} /> Ver Detalhes
+            </button>
+          </div>
+        ))
+      ) : <p className="text-gray-500">Nenhuma reserva encontrada.</p>}
     </div>
+  </div>
 ));
 ReservationList.displayName = 'ReservationList';
 ReservationList.propTypes = { /* ... */ };
@@ -131,18 +144,19 @@ const CalendarPage = () => {
   const [upcomingReservations, setUpcomingReservations] = useState([]);
   const [completedReservations, setCompletedReservations] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const currentUserData = useMemo(() => {
-    if (!property || !usuario) return { isMaster: false, saldoDiarias: 0 };
+    if (!property || !usuario) return { isMaster: false, saldoDiariasAtual: 0, saldoDiariasFuturo: 0 };
     const userLink = property.usuarios?.find(m => m.usuario?.id === usuario.id);
     return {
-        isMaster: userLink?.permissao === 'proprietario_master',
-        saldoDiarias: userLink?.saldoDiariasAtual ?? 0,
+      isMaster: userLink?.permissao === 'proprietario_master',
+      saldoDiariasAtual: userLink?.saldoDiariasAtual ?? 0,
+      saldoDiariasFuturo: userLink?.saldoDiariasFuturo ?? 0,
     };
   }, [property, usuario]);
 
@@ -153,14 +167,14 @@ const CalendarPage = () => {
     const endDate = (viewInfo?.end || new Date(now.getFullYear(), now.getMonth() + 1, 0)).toISOString();
 
     try {
-      const [ propertyResponse, eventsResponse, penaltiesResponse, upcomingResponse, completedResponse ] = await Promise.all([
+      const [propertyResponse, eventsResponse, penaltiesResponse, upcomingResponse, completedResponse] = await Promise.all([
         api.get(`/property/${propertyId}`),
         api.get(`/calendar/property/${propertyId}`, { params: { startDate, endDate } }),
         api.get(`/calendar/property/${propertyId}/penalties`),
         api.get(`/calendar/property/${propertyId}/upcoming`, { params: { limit: 3 } }),
         api.get(`/calendar/property/${propertyId}/completed`, { params: { limit: 3 } })
       ]);
-      
+
       setProperty(propertyResponse.data.data);
       setEvents(eventsResponse.data.data.map(r => ({ ...r, start: new Date(r.dataInicio), end: new Date(r.dataFim), title: r.usuario.nomeCompleto })));
       setPenalties(penaltiesResponse.data.data.penalties);
@@ -177,15 +191,15 @@ const CalendarPage = () => {
     fetchData({});
   }, [fetchData]);
 
-/**
-   * Manipula o clique em uma data livre no calendário.
-   * Verifica se a data não está no passado e se já não está reservada
-   * antes de abrir o modal de criação de reserva.
-   */
+  /**
+     * Manipula o clique em uma data livre no calendário.
+     * Verifica se a data não está no passado e se já não está reservada
+     * antes de abrir o modal de criação de reserva.
+     */
   const handleSelectSlot = useCallback((slotInfo) => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0); // Zera o horário para uma comparação de data precisa.
-    
+
     // 1. Garante que o usuário não pode agendar em datas passadas.
     if (slotInfo.start < hoje) {
       toast.error("Não é possível agendar em datas passadas.");
@@ -196,14 +210,14 @@ const CalendarPage = () => {
     // Uma data está ocupada se ela for maior ou igual ao início de uma reserva
     // E menor que o fim dessa mesma reserva. O dia do check-out (dataFim) fica livre.
     const isBooked = events.some(event => {
-        // Normaliza as datas do evento para ignorar o horário na comparação.
-        const eventStart = new Date(event.start);
-        eventStart.setHours(0, 0, 0, 0);
+      // Normaliza as datas do evento para ignorar o horário na comparação.
+      const eventStart = new Date(event.start);
+      eventStart.setHours(0, 0, 0, 0);
 
-        const eventEnd = new Date(event.end);
-        eventEnd.setHours(0, 0, 0, 0);
+      const eventEnd = new Date(event.end);
+      eventEnd.setHours(0, 0, 0, 0);
 
-        return slotInfo.start >= eventStart && slotInfo.start < eventEnd;
+      return slotInfo.start >= eventStart && slotInfo.start < eventEnd;
     });
 
     if (isBooked) {
@@ -216,9 +230,9 @@ const CalendarPage = () => {
     setIsModalOpen(true);
   }, [events]);
 
-/**
-   * Navega para a página de detalhes da reserva ao clicar em um evento no calendário.
-   */
+  /**
+     * Navega para a página de detalhes da reserva ao clicar em um evento no calendário.
+     */
   const handleSelectEvent = useCallback((event) => {
     navigate(paths.detalhesReserva.replace(':id', event.id));
   }, [navigate]);
@@ -230,14 +244,14 @@ const CalendarPage = () => {
   const handleViewDetails = useCallback((reservationId) => {
     navigate(paths.detalhesReserva.replace(':id', reservationId));
   }, [navigate]);
-  
+
   return (
     <>
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar variant="property" collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className={clsx("flex-1 p-6 transition-all duration-300", sidebarCollapsed ? 'ml-20' : 'ml-64')}>
           <div className="max-w-7xl mx-auto">
-            
+
             {/* Bloco de cabeçalho da página.*/}
             <div className="mb-6">
               <Link to={paths.propriedade.replace(':id', propertyId)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-black mb-2">
@@ -269,15 +283,15 @@ const CalendarPage = () => {
                 />
               </div>
               <div className="lg:col-span-1 space-y-4">
-                <UserBalanceCard saldo={currentUserData.saldoDiarias} />
-                <SchedulingRules 
+                <UserBalanceCard saldoAtual={currentUserData.saldoDiariasAtual} saldoFuturo={currentUserData.saldoDiariasFuturo} />
+                <SchedulingRules
                   property={property}
                   isMaster={currentUserData.isMaster}
-                  onUpdate={fetchData} 
+                  onUpdate={fetchData}
                 />
                 <PenaltyList penalties={penalties} loading={loading} />
-                <ReservationList title="Próximas Reservas" icon={<Send size={18}/>} reservations={upcomingReservations} loading={loading} onSelect={handleViewDetails} />
-                <ReservationList title="Últimas Concluídas" icon={<Clock size={18}/>} reservations={completedReservations} loading={loading} onSelect={handleViewDetails} />
+                <ReservationList title="Próximas Reservas" icon={<Send size={18} />} reservations={upcomingReservations} loading={loading} onSelect={handleViewDetails} />
+                <ReservationList title="Últimas Concluídas" icon={<Clock size={18} />} reservations={completedReservations} loading={loading} onSelect={handleViewDetails} />
               </div>
             </div>
           </div>
@@ -290,6 +304,7 @@ const CalendarPage = () => {
         propertyRules={{ minStay: property?.duracaoMinimaEstadia, maxStay: property?.duracaoMaximaEstadia }}
         propertyId={Number(propertyId)}
         saldoDiarias={currentUserData.saldoDiarias}
+        saldoDiariasFuturo={currentUserData.saldoDiariasFuturo}
         onReservationCreated={fetchData}
       />
       <RulesHelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
