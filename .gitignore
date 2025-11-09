@@ -8,17 +8,11 @@ venv/
 */venv/
 .venv/
 */.venv/
-env/
-*/env/
 .env/
 */.env/
-ENV/
-*/ENV/
-.env.*
 
 # Arquivos de ambiente - NUNCA ENVIE ISSO!
 .env
-.env.*
 
 # Arquivos de build do front-end (Vite)
 dist/
@@ -34,11 +28,4 @@ dist-ssr/
 Thumbs.db
 
 
-# Ignora arquivos específicos de rotas e páginas que você está modificando
-TCC-Front_Web/src/components/calendar/ChecklistForm.jsx
-TCC-Front_Web/src/components/calendar/ChecklistHistory.jsx
-TCC-Front_Web/src/components/calendar/ReservationModal.jsx
-TCC-Front_Web/src/components/calendar/RulesHelpModal.jsx
-TCC-Front_Web/src/components/calendar/SchedulingRules.jsx
-TCC-Front_Web/src/components/financial/CurrencyInputField.jsx
-TCC-Front_Web/src/components/financial/ExpenseDetailsModal.jsx
+
