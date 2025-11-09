@@ -1,6 +1,5 @@
 # QOTA — Documentação Técnica do Front-end
 
-[![Status](https://img.shields.io/badge/status-em_desenvolvimento-yellow)](https://github.com/user/repo)
 [![React](https://img.shields.io/badge/React-18.0.0-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-purple?logo=vite)](https://vitejs.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-cyan?logo=tailwindcss)](https://tailwindcss.com/)
@@ -9,7 +8,7 @@ Este documento serve como a fonte central da verdade (Single Source of Truth) pa
 
 ---
 
-## 1. 📖 Visão Geral
+## 1. Visão Geral
 
 O front-end do QOTA é uma **Single Page Application (SPA)** robusta, construída com **React 18** e **Vite**. A aplicação serve como a interface do cliente para um sistema de gerenciamento de bens compartilhados, comunicando-se com um back-end via API REST.
 
@@ -47,22 +46,53 @@ A aplicação implementa os seguintes módulos de negócio principais:
 
 ---
 
-## 2. 🚀 Configuração e Execução
+## 2. Sumário
 
-### 2.1. Pré-requisitos
+* [1. Visão Geral](#1-visão-geral)
+  * [1.1. Stack de Tecnologia Principal](#11-stack-de-tecnologia-principal)
+  * [1.2. Recursos e Funcionalidades](#12-recursos-e-funcionalidades)
+* [2. Sumário](#2-sumário)
+* [3. Configuração e Execução](#3-configuração-e-execução)
+  * [3.1. Pré-requisitos](#31-pré-requisitos)
+  * [3.2. Variáveis de Ambiente](#32-variáveis-de-ambiente)
+  * [3.3. Instalação e Execução](#33-instalação-e-execução)
+  * [3.4. Scripts Disponíveis](#34-scripts-disponíveis)
+* [4. Arquitetura e Conceitos Fundamentais](#4-arquitetura-e-conceitos-fundamentais)
+  * [4.1. Fluxo de Autenticação](#41-fluxo-de-autenticação)
+  * [4.2. Gerenciamento de Estado](#42-gerenciamento-de-estado)
+  * [4.3. Camada de Serviços e API](#43-camada-de-serviços-e-api)
+  * [4.4. Estilização](#44-estilização)
+  * [4.5. Pipeline de CI/CD](#45-pipeline-de-cicd)
+* [5. Estrutura Detalhada do Projeto](#5-estrutura-detalhada-do-projeto)
+* [6. Análise Detalhada dos Módulos](#6-análise-detalhada-dos-módulos)
+  * [6.1. src/pages (As Páginas Orquestradoras)](#61-srcpages-as-páginas-orquestradoras)
+  * [6.2. src/components (Os Blocos de Construção)](#62-srccomponents-os-blocos-de-construção)
+* [7. Fluxos de Negócio Críticos](#7-fluxos-de-negócio-críticos)
+  * [7.1. Fluxo: Cadastro de Propriedade (com Validação de IA)](#71-fluxo-cadastro-de-propriedade-com-validação-de-ia)
+  * [7.2. Fluxo: Convite de Membro (3 Cenários)](#72-fluxo-convite-de-membro-3-cenários)
+  * [7.3. Fluxo: Reserva e Check-in/Check-out](#73-fluxo-reserva-e-check-incheck-out)
+  * [7.4. Fluxo: Cadastro de Despesa (com IA)](#74-fluxo-cadastro-de-despesa-com-ia)
+* [8. Testes](#8-testes)
+* [9. Endpoints da API (Mapeamento)](#9-endpoints-da-api-mapeamento)
+
+---
+
+## 3. Configuração e Execução
+
+### 3.1. Pré-requisitos
 
 * Node.js (versão 20.x ou superior recomendada)
 * NPM (gerenciador de pacotes)
 * Uma instância do back-end QOTA em execução.
 
-### 2.2. Variáveis de Ambiente
+### 3.2. Variáveis de Ambiente
 
 Crie um arquivo `.env` na raiz do projeto (`TCC-Front_Web/.env`). Este arquivo é ignorado pelo Git e contém as chaves de API.
 
     # URL base da API do back-end
     VITE_API_URL="http://localhost:8001/api/v1"
 
-### 2.3. Instalação e Execução
+### 3.3. Instalação e Execução
 
 1.  **Instale as dependências:**
 
@@ -74,7 +104,7 @@ Crie um arquivo `.env` na raiz do projeto (`TCC-Front_Web/.env`). Este arquivo �
 
     A aplicação estará disponível em `http://localhost:3000`.
 
-### 2.4. Scripts Disponíveis
+### 3.4. Scripts Disponíveis
 
 * `npm run dev`: Inicia o servidor de desenvolvimento Vite.
 * `npm run build`: Compila a aplicação para produção.
@@ -83,11 +113,11 @@ Crie um arquivo `.env` na raiz do projeto (`TCC-Front_Web/.env`). Este arquivo �
 
 ---
 
-## 3. 🏗️ Arquitetura e Conceitos Fundamentais
+## 4. Arquitetura e Conceitos Fundamentais
 
 A arquitetura do QOTA é projetada para ser escalável e modular.
 
-### 3.1. Fluxo de Autenticação (O "Coração" da App)
+### 4.1. Fluxo de Autenticação
 
 O gerenciamento de sessão é o fluxo mais crítico da aplicação.
 
@@ -104,14 +134,14 @@ O gerenciamento de sessão é o fluxo mais crítico da aplicação.
     * Remove o header `Authorization` do `api.js`.
 6.  **Expiração de Sessão (`api.js`):** Se o usuário estiver navegando e seu `accessToken` expirar, qualquer requisição à API falhará com `401` ou `403`. O **interceptor de resposta** do Axios detecta isso, executa o `logout()` automaticamente e força o redirecionamento para `/login`.
 
-### 3.2. Gerenciamento de Estado
+### 4.2. Gerenciamento de Estado
 
 O estado da aplicação é dividido em duas categorias:
 
 1.  **Estado Global (`context/AuthContext.jsx`):** Usado *exclusivamente* para o estado de autenticação (dados do `usuario`, `token`, `authLoading` e as funções `login`/`logout`/`updateUser`).
 2.  **Estado Local (Component State):** Todo o restante do estado (listas, dados de formulários, estados de loading de UI, etc.) é gerenciado localmente dentro das páginas (`src/pages`) ou em hooks customizados (`src/hooks`), usando `useState`, `useCallback`, e `useMemo`.
 
-### 3.3. Camada de Serviços e API
+### 4.3. Camada de Serviços e API
 
 * **`services/api.js`:** É a instância centralizada do **Axios**.
     * Define o `baseURL` a partir do `.env`.
@@ -120,13 +150,13 @@ O estado da aplicação é dividido em duas categorias:
 * **`services/propertyService.js`:** Abstrai chamadas de API específicas, como `getPropertiesByUserId`.
 * **Hooks de Dados (`hooks/useUserProperties.js`):** Encapsula a lógica de *busca* de dados. Ele gerencia seus próprios estados de `loading`, `error`, `pagination` e `data`, fornecendo uma interface limpa para os componentes de página (como `Home.jsx`).
 
-### 3.4. Estilização
+### 4.4. Estilização
 
 * **Tailwind CSS:** É o framework de estilização principal.
 * **`tailwind.config.js`:** Define o tema central da aplicação, incluindo a paleta de cores (`gold: '#C89116'`) e os gradientes (`gold-gradient-vertical`).
 * **`components/ui/`:** Esta pasta é a "Biblioteca de Componentes" base. Componentes como `dialog.jsx`, `Input.jsx`, e `FormComponents.jsx` são usados para construir todos os outros componentes e páginas, garantindo consistência visual.
 
-### 3.5. Pipeline de CI/CD
+### 4.5. Pipeline de CI/CD
 
 O projeto possui um pipeline de Integração Contínua definido em `.github/workflows/ci.yml`.
 
@@ -141,7 +171,7 @@ O projeto possui um pipeline de Integração Contínua definido em `.github/work
 
 ---
 
-## 4. 🗂️ Estrutura Detalhada do Projeto
+## 5. Estrutura Detalhada do Projeto
 
 Abaixo está a estrutura completa de todos os 53 arquivos analisados no projeto `src`.
 
@@ -244,11 +274,11 @@ Abaixo está a estrutura completa de todos os 53 arquivos analisados no projeto 
 
 ---
 
-## 5. 🧩 Análise Detalhada dos Módulos (Componentes e Páginas)
+## 6. Análise Detalhada dos Módulos
 
 Esta seção detalha a responsabilidade de cada página e dos componentes mais importantes.
 
-### 5.1. `src/pages` (As Páginas Orquestradoras)
+### 6.1. `src/pages` (As Páginas Orquestradoras)
 
 As páginas atuam como "orquestradores". Elas são responsáveis por buscar dados, gerenciar o estado principal da tela e montar os componentes de UI.
 
@@ -263,7 +293,7 @@ As páginas atuam como "orquestradores". Elas são responsáveis por buscar dado
 * **`ReservationDetailsPage.jsx`:** Detalhes de *uma* reserva. Gerencia o estado do fluxo de "Check-in vs. Check-out" e exibe o `ChecklistForm` ou `ChecklistHistory` apropriado.
 * **`EditProfile.jsx`:** Gerencia o formulário de dados do usuário e o complexo fluxo de upload e recorte de imagem de perfil (`react-image-crop`).
 
-### 5.2. `src/components` (Os Blocos de Construção)
+### 6.2. `src/components` (Os Blocos de Construção)
 
 * **`auth/LoginForm.jsx`:**
     * Contém toda a lógica de login.
@@ -296,11 +326,11 @@ As páginas atuam como "orquestradores". Elas são responsáveis por buscar dado
 
 ---
 
-## 6. 🚦 Fluxos de Negócio Críticos (Passo a Passo)
+## 7. Fluxos de Negócio Críticos
 
 Esta seção detalha os fluxos de lógica de negócio mais complexos, essenciais para a manutenção.
 
-### 6.1. Fluxo: Cadastro de Propriedade (com Validação de IA)
+### 7.1. Fluxo: Cadastro de Propriedade (com Validação de IA)
 
 **Página:** `RegisterProperty.jsx`
 
@@ -320,7 +350,7 @@ Esta seção detalha os fluxos de lógica de negócio mais complexos, essenciais
     * A API retorna o `propertyId`.
     * `POST /propertyDocuments/upload` (para o comprovante) e `POST /propertyPhoto/upload` (para as fotos) são enviados em paralelo, usando o `propertyId` recebido.
 
-### 6.2. Fluxo: Convite de Membro (3 Cenários)
+### 7.2. Fluxo: Convite de Membro (3 Cenários)
 
 **Página:** `AcceptInvitePage.jsx`
 
@@ -338,7 +368,7 @@ Esta seção detalha os fluxos de lógica de negócio mais complexos, essenciais
         * A página exibe o botão **"Criar Conta para Aceitar"**.
         * Usuário é enviado para `/cadastro` para criar sua conta.
 
-### 6.3. Fluxo: Reserva e Check-in/Check-out
+### 7.3. Fluxo: Reserva e Check-in/Check-out
 
 **Páginas:** `CalendarPage.jsx`, `ReservationDetailsPage.jsx`
 
@@ -362,7 +392,7 @@ Esta seção detalha os fluxos de lógica de negócio mais complexos, essenciais
     * Ao clicar, a página rola para o `ChecklistForm` (modo "CHECKOUT").
     * Usuário preenche e submete -> `POST /calendar/checkout`. O status da reserva muda para 'CONCLUIDA'.
 
-### 6.4. Fluxo: Cadastro de Despesa (com IA)
+### 7.4. Fluxo: Cadastro de Despesa (com IA)
 
 **Componente:** `AddExpenseModal.jsx` (aberto pela `FinancialDashboard.jsx`)
 
@@ -378,7 +408,7 @@ Esta seção detalha os fluxos de lógica de negócio mais complexos, essenciais
 
 ---
 
-## 7. 🧪 Testes
+## 8. Testes
 
 O projeto está configurado com **Vitest** e **React Testing Library**.
 
@@ -388,7 +418,7 @@ O projeto está configurado com **Vitest** e **React Testing Library**.
 
 ---
 
-## 8. 🗺️ Endpoints da API (Mapeamento)
+## 9. Endpoints da API (Mapeamento)
 
 Esta é uma lista consolidada dos endpoints da API consumidos pelo front-end:
 
