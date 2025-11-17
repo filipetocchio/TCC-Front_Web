@@ -1,87 +1,111 @@
 // Todos direitos autorais reservados pelo QOTA.
 
 /**
- * Componente de Formulário de Login
  *
  * Descrição:
- * Este arquivo contém o componente React responsável pela interface e lógica de
- * autenticação do usuário. Ele gerencia o estado dos campos de e-mail e senha,
- * lida com a submissão do formulário, comunica-se com a API de login e fornece
- * feedback visual ao usuário durante o processo.
+ * Este componente renderiza a interface de login da aplicação. Ele é responsável
+ * por gerenciar o estado local dos campos de entrada (e-mail e senha),
+ * processar a submissão do formulário, interagir com a API de autenticação
+ * e fornecer feedback visual ao usuário (carregamento e mensagens de erro).
  *
- * O componente utiliza o AuthContext para gerenciar o estado de autenticação
- * global da aplicação após um login bem-sucedido.
+ * Em caso de sucesso na autenticação, ele utiliza o AuthContext para atualizar
+ * o estado global da aplicação e redireciona o usuário para a página principal.
  */
+
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-import api from '../../services/api';
+// Importa a instância da API e rotas
+import api from '@/services/api.js'; 
 import paths from '../../routes/paths';
+// Importa recursos visuais (imagens e ícones)
 import LoginImage from '../../assets/login.png';
 import SuaLogo from '../../assets/Ln QOTA Branca.png';
 import { Mail, Lock, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 
 const LoginForm = () => {
-  // --- Gerenciamento de Estado ---
+  // --- 1. Gerenciamento de Estado Local ---
+  // Armazena as credenciais inseridas pelo usuário.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Estado para feedback de carregamento.
-  const [statusMessage, setStatusMessage] = useState(null); // Estado para mensagens de erro ou sucesso.
+  
+  // Controla o estado de carregamento para desabilitar o botão
+  // e exibir o spinner durante a requisição.
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Armazena a mensagem de feedback (erro ou sucesso)
+  // a ser exibida para o usuário.
+  const [statusMessage, setStatusMessage] = useState(null);
 
-  // Hooks para navegação e contexto de autenticação.
+  // --- 2. Hooks e Contexto ---
+  // Hook para navegação programática (redirecionamento).
   const navigate = useNavigate();
+  // Obtém a função 'login' do contexto global de autenticação.
   const { login } = useContext(AuthContext);
 
   /**
-   * Processa a submissão do formulário de login.
-   * Envia as credenciais para a API e gerencia o estado da aplicação
-   * com base na resposta.
+   * Processa a submissão do formulário de login quando o usuário
+   * clica no botão "Entrar".
+   *
+   * @param {React.FormEvent} e O evento de submissão do formulário.
    */
   const handleSubmit = async (e) => {
+    // Previne o comportamento padrão do navegador de recarregar a página.
     e.preventDefault();
-    if (isLoading) return; // Impede envios múltiplos durante o carregamento.
+    // Previne submissões múltiplas enquanto uma já está em processamento.
+    if (isLoading) return; 
 
+    // Ativa o estado de carregamento e limpa mensagens anteriores.
     setIsLoading(true);
     setStatusMessage(null);
 
     try {
-      // --- 1. Requisição para a API de Login ---
+      // --- 3. Requisição à API ---
+      // Envia as credenciais para o endpoint de autenticação.
       const loginResponse = await api.post('/auth/login', { email, password });
+      
+      // Desestrutura a resposta da API (conforme definido no backend).
+      // O 'loginResponse.data.data' contém o objeto do usuário e o token.
       const { accessToken, ...userData } = loginResponse.data.data;
       
-      // --- 2. Atualização do Contexto de Autenticação ---
-      // Salva os dados do usuário e o token no estado global da aplicação.
+      // --- 4. Atualização de Estado Global ---
+      // Chama a função 'login' do AuthContext para salvar os dados do
+      // usuário e o token globalmente e no localStorage.
       login(userData, accessToken);
 
-      // --- 3. Redirecionamento ---
-      // Navega o usuário para a página principal após o login.
+      // --- 5. Redirecionamento ---
+      // Navega o usuário para a página inicial (home) após o sucesso.
       navigate(paths.home);
+
     } catch (error) {
-      // --- Tratamento de Erros ---
-      // Exibe uma mensagem de erro para o usuário.
+      // --- 6. Tratamento de Erros ---
+      // Exibe a mensagem de erro vinda da API ou uma mensagem padrão.
       setStatusMessage({
         type: 'error',
         text: error.response?.data?.message || 'E-mail ou senha inválidos. Verifique suas credenciais.',
       });
     } finally {
-      // Garante que o estado de carregamento seja desativado ao final do processo.
+      // --- 7. Conclusão ---
+      // Garante que o estado de carregamento seja desativado,
+      // independentemente de sucesso ou falha.
       setIsLoading(false);
     }
   };
 
   return (
     <div className="flex h-screen">
-      {/* Seção do Formulário (Esquerda) */}
+      {/* --- Seção do Formulário (Esquerda) --- */}
       <div className="w-full md:w-1/3 flex items-center justify-center bg-primary px-4">
         <div className="w-full max-w-md p-8 bg-gold-gradient-vertical rounded-2xl shadow-xl">
           
+          {/* Logo */}
           <div className="flex justify-center mb-0">
             <img src={SuaLogo} alt="Logo QOTA" className="h-64" />
           </div>
           
           <h2 className="text-xl font-semibold text-center text-white mb-6">Acesso ao Sistema</h2>
 
-          {/* Componente para exibir mensagens de status (erro) */}
+          {/* Bloco de Mensagem de Status (Erro) */}
           {statusMessage && (
             <div
               className={`flex items-center gap-2 p-4 rounded-md mb-4 border ${
@@ -95,7 +119,9 @@ const LoginForm = () => {
             </div>
           )}
 
+          {/* Início do Formulário */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            
             {/* Campo de E-mail */}
             <div>
               <label htmlFor="email" className="block text-text-on-dark font-medium mb-1">Email</label>
@@ -103,10 +129,10 @@ const LoginForm = () => {
                 <Mail className="text-gray-600" size={20} />
                 <input
                   type="email"
-                  id="email"
+                  id="email" // 'id' corresponde ao 'htmlFor' para acessibilidade.
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
+                  required // Ativa a validação HTML5.
                   placeholder="Digite seu email"
                   className="w-full bg-white text-gray-700 placeholder-gray-500 focus:outline-none"
                 />
@@ -120,23 +146,24 @@ const LoginForm = () => {
                 <Lock className="text-gray-600" size={20} />
                 <input
                   type="password"
-                  id="password"
+                  id="password" // 'id' corresponde ao 'htmlFor' para acessibilidade.
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
+                  required // Ativa a validação HTML5.
                   placeholder="Digite sua senha"
                   className="w-full bg-white text-gray-700 placeholder-gray-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Botão de Submissão com Feedback de Carregamento */}
+            {/* Botão de Submissão */}
             <button
               type="submit"
               className="w-full py-2 bg-gold text-white font-semibold rounded-md hover:bg-transparent hover:text-gold hover:border hover:border-gold transition duration-300 shadow-md flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
+              disabled={isLoading} // Desabilita o botão durante o carregamento.
             >
               {isLoading ? (
+                // Exibe o spinner de carregamento.
                 <Loader2 className="animate-spin" size={20} />
               ) : (
                 'Entrar'
@@ -144,6 +171,7 @@ const LoginForm = () => {
             </button>
           </form>
 
+          {/* Link para Cadastro */}
           <p className="mt-4 text-center text-text-on-dark">
             Não tem uma conta?{' '}
             <a
@@ -156,7 +184,9 @@ const LoginForm = () => {
         </div>
       </div>
 
-      {/* Seção da Imagem (Direita) */}
+      {/* --- Seção da Imagem (Direita) --- */}
+      {/* 'hidden md:block' garante que a imagem seja exibida
+           apenas em telas de tamanho médio ou maiores. */}
       <div className="hidden md:block w-2/3 h-screen">
         <img
           src={LoginImage}
