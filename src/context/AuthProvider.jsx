@@ -1,84 +1,114 @@
 // Todos direitos autorais reservados pelo QOTA.
 
 /**
- * Provedor de Autenticação
  *
  * Descrição:
- * Este arquivo define o `AuthProvider`, um componente de ordem superior (HOC) que
- * utiliza o Context API do React para gerenciar e prover o estado de autenticação
- * para toda a aplicação.
+ * Este componente é o pilar central do gerenciamento de estado de
+ * autenticação em toda a aplicação. Ele utiliza a Context API do React
+ * para encapsular a lógica de autenticação e fornecer dados e ações
+ * (como 'login', 'logout') para componentes filhos.
  *
- * Responsabilidades:
- * 1.  Manter o estado do usuário autenticado (`usuario`) e do token de acesso (`token`).
- * 2.  Tentar restaurar a sessão de um usuário ao carregar a aplicação, utilizando
- * o endpoint de refresh token.
- * 3.  Fornecer um estado de carregamento (`authLoading`) para evitar renderizações
- * em estados inconsistentes enquanto a sessão é verificada.
- * 4.  Expor métodos para `login`, `logout` e `updateUser` que manipulam o estado
- * global e o armazenamento local.
- * 5.  Otimizar a performance através de `useMemo` e `useCallback` para evitar
- * re-renderizações desnecessárias nos componentes consumidores.
+ * Fluxo de Lógica:
+ * 1.  Estado Interno: Gerencia 'usuario', 'token' e 'authLoading'.
+ * 2.  Restaurar Sessão (useEffect): Ao montar, tenta autenticar o usuário
+ * silenciosamente via endpoint '/auth/refresh'. O estado 'authLoading'
+ * previne o acesso a rotas protegidas antes desta verificação.
+ * 3.  Função 'login': Recebe dados do usuário e token, atualiza o estado
+ * interno, persiste os dados do usuário no localStorage e configura o
+ * header 'Authorization' para futuras requisições da API.
+ * 4.  Função 'logout': Notifica o backend (via '/auth/logout'), limpa o
+ * estado, o localStorage e o header da API.
+ * 5.  Otimização: Utiliza 'useCallback' e 'useMemo' para otimizar o
+ * desempenho e evitar renderizações desnecessárias nos componentes
+ * consumidores.
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { AuthContext } from './AuthContext';
-import api, { setAuthToken } from '../services/api';
+
+// Importa a instância da API e o configurador de token.
+import api, { setAuthToken } from '@/services/api.js';
 
 const AuthProvider = ({ children }) => {
-  // --- Gerenciamento de Estado ---
+  // --- 1. Gerenciamento de Estado Interno ---
+
+  // 'usuario': Armazena os dados do usuário logado (ex: nome, e-mail).
   const [usuario, setUsuario] = useState(null);
+  // 'token': Armazena o accessToken JWT.
   const [token, setToken] = useState(null);
-  // `authLoading` é usado para a verificação inicial da sessão.
+  
+  // 'authLoading': Estado de carregamento para a verificação inicial da sessão.
+  // Essencial para 'ProtectedRoutes' (Rotas Protegidas).
   const [authLoading, setAuthLoading] = useState(true);
 
   /**
-   * Efeito para restaurar a sessão do usuário ao inicializar a aplicação.
-   * Ele tenta obter um novo access token a partir do refresh token (cookie httpOnly).
+   * Efeito de inicialização (montagem) para restaurar a sessão do usuário.
+   * Tenta obter um novo accessToken usando o refresh token (via cookie httpOnly).
    */
   useEffect(() => {
     const restoreSession = async () => {
       try {
+        // Tenta renovar a sessão no backend.
         const response = await api.post('/auth/refresh');
+        // Desestrutura a resposta (conforme padrão da API).
         const { accessToken, ...userData } = response.data.data;
-        // Se a restauração for bem-sucedida, realiza o login.
+        
+        // Se bem-sucedido, aplica os dados do usuário e token.
+        // A função 'login' é definida com useCallback, sendo segura de usar aqui.
         login(userData, accessToken);
       } catch (error) {
-        // Uma falha aqui é esperada se não houver sessão ativa.
-        // O console.log não é necessário, pois este é um fluxo normal.
+        // Falha esperada (ex: sem sessão ativa, token expirado).
+        // O usuário permanece como 'null' (não autenticado).
       } finally {
-        // Marca a verificação inicial como concluída.
+        // Indica que a verificação inicial terminou.
+        // Isso libera o 'ProtectedRoute' para tomar a decisão de redirecionamento.
         setAuthLoading(false);
       }
     };
     
     restoreSession();
-  }, []); // O array vazio garante que este efeito rode apenas uma vez.
+    // O array de dependências vazio garante que este efeito
+    // execute apenas uma vez, na montagem do componente.
+  }, []); // 'login' é estável devido ao useCallback, não sendo necessário como dependência.
 
   /**
-   * Realiza o login do usuário, atualizando o estado global e o armazenamento local.
+   * Realiza o login do usuário.
+   * Atualiza o estado global e persiste os dados de sessão.
+   * O 'useCallback' é usado para garantir que a referência da função
+   * seja estável para os consumidores do contexto.
+   *
+   * @param {object} usuarioData Dados do usuário (id, nome, etc.)
+   * @param {string} tokenData O accessToken JWT.
    */
   const login = useCallback((usuarioData, tokenData) => {
     setUsuario(usuarioData);
     setToken(tokenData);
-    // Persiste os dados do usuário no localStorage para fácil acesso.
+    
+    // Persiste os dados do usuário no localStorage para
+    // acesso rápido (ex: exibição do nome em recarregamentos).
     localStorage.setItem('usuario', JSON.stringify(usuarioData));
-    // Configura o token de autorização para todas as futuras requisições da API.
+    
+    // Configura o token de autorização para todas as
+    // futuras requisições da instância 'api'.
     setAuthToken(tokenData);
   }, []);
 
   /**
-   * Realiza o logout do usuário, limpando o estado global, o armazenamento local
-   * e notificando o servidor para invalidar o refresh token.
+   * Realiza o logout do usuário.
+   * Limpa o estado global, o armazenamento local e notifica o backend.
+   * O 'useCallback' memoriza a função.
    */
   const logout = useCallback(async () => {
     try {
-      // Notifica o backend para invalidar o refresh token, aumentando a segurança.
+      // Notifica o backend para invalidar o refresh token (prática de segurança).
       await api.post('/auth/logout');
     } catch (error) {
-      // A falha na chamada da API não deve impedir o logout no frontend.
+      // Registra o erro, mas prossegue com a limpeza local
+      // para garantir que o usuário seja deslogado na interface.
       console.error("Falha ao notificar o servidor sobre o logout:", error);
     } finally {
-      // Limpa todos os dados de sessão do estado e do armazenamento local.
+      // Limpa todos os dados de sessão, independentemente
+      // do sucesso da chamada de API.
       setUsuario(null);
       setToken(null);
       localStorage.removeItem('usuario');
@@ -88,24 +118,32 @@ const AuthProvider = ({ children }) => {
 
   /**
    * Atualiza os dados do usuário no estado global e no armazenamento local.
-   * Utilizado, por exemplo, após a edição do perfil.
+   * Útil para (por exemplo) atualizar o perfil do usuário
+   * sem exigir um novo login.
+   *
+   * @param {object} newUserData Novos dados a serem mesclados
+   * com o estado atual do usuário.
    */
   const updateUser = useCallback((newUserData) => {
     setUsuario((currentUser) => {
       const updatedUser = { ...currentUser, ...newUserData };
+      // Atualiza também o localStorage.
       localStorage.setItem('usuario', JSON.stringify(updatedUser));
       return updatedUser;
     });
   }, []);
 
   /**
-   * Memoriza o valor do contexto para otimizar a performance.
-   * O objeto de contexto só será recriado se uma de suas dependências mudar,
-   * evitando re-renderizações desnecessárias nos componentes consumidores.
+   * Otimização de performance (useMemo).
+   * Memoriza o objeto de valor do contexto. O objeto só será
+   * recriado se um dos valores no array de dependências mudar.
+   * Isso previne renderizações desnecessárias em todos os
+   * componentes que consomem este contexto.
    */
   const contextValue = useMemo(() => ({
     usuario,
     token,
+    // Cria um booleano 'isAuthenticated' derivado do 'token'.
     isAuthenticated: !!token,
     authLoading,
     login,
@@ -113,6 +151,7 @@ const AuthProvider = ({ children }) => {
     updateUser,
   }), [usuario, token, authLoading, login, logout, updateUser]);
 
+  // Fornece o valor memorizado para todos os componentes filhos.
   return (
     <AuthContext.Provider value={contextValue}>
       {children}
@@ -122,6 +161,10 @@ const AuthProvider = ({ children }) => {
 
 // Validação de PropTypes para garantir o uso correto do componente.
 AuthProvider.propTypes = {
+  /**
+   * O conteúdo da aplicação (ex: rotas) que
+   * deve ter acesso ao contexto de autenticação.
+   */
   children: PropTypes.node.isRequired,
 };
 

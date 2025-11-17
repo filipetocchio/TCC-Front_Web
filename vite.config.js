@@ -56,7 +56,7 @@ export default defineConfig({
     // Habilita o uso de globais (describe, it, expect, vi)
     // sem necessidade de importação manual em cada arquivo de teste.
     globals: true,
-
+    
     // Define o ambiente de simulação do DOM. 'jsdom' simula um
     // navegador para que componentes React possam ser renderizados e testados.
     environment: 'jsdom',
