@@ -50,7 +50,7 @@
     "globals": "16.0.0",
     "jsdom": "27.0.0",
     "postcss": "8.5.3",
-    "tailwindcss": "3.4.17",
+    "tailwindcss": "^4.1.17",
     "vite": "^6.3.6",
     "vitest": "3.2.4",
     "vitest-axe": "^0.1.0"
