@@ -50,12 +50,12 @@ const Step1_Dates = React.memo(({ formData, handleInputChange }) => (
     <div className="flex items-center gap-2"><Calendar size={20} className="text-gray-500" /> <h3 className="text-lg font-semibold">Selecione o Período</h3></div>
     <div className="grid grid-cols-2 gap-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Data de Início *</label>
-        <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
+        <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">Data de Início *</label>
+        <input id="startDate" type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700">Data de Fim *</label>
-        <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} required min={formData.startDate} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
+        <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">Data de Fim *</label>
+        <input id="endDate" type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} required min={formData.startDate} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
       </div>
     </div>
   </div>
@@ -67,8 +67,8 @@ const Step2_Guests = React.memo(({ formData, handleInputChange }) => (
   <div className="space-y-4">
     <div className="flex items-center gap-2"><Users size={20} className="text-gray-500" /> <h3 className="text-lg font-semibold">Informe os Detalhes</h3></div>
     <div>
-      <label className="block text-sm font-medium text-gray-700">Número de Hóspedes *</label>
-      <input type="number" name="numGuests" value={formData.numGuests} onChange={handleInputChange} required min="1" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
+      <label htmlFor="numGuests" className="block text-sm font-medium text-gray-700">Número de Hóspedes *</label>
+      <input id="numGuests" type="number" name="numGuests" value={formData.numGuests} onChange={handleInputChange} required min="1" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
     </div>
   </div>
 ));
