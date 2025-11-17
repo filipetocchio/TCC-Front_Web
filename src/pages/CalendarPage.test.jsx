@@ -48,9 +48,9 @@ vi.mock('react-router-dom', async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
-    // O componente usa "const { propertyId } = useParams()"
-    // Portanto, o mock DEVE fornecer a chave "propertyId".
-    useParams: vi.fn(() => ({ propertyId: '1' })),
+    // O componente usa "const { id: propertyId } = useParams()"
+    // Portanto, o mock DEVE fornecer a chave "id".
+    useParams: vi.fn(() => ({ id: '1' })),
     useNavigate: vi.fn(() => vi.fn()),
   };
 });
@@ -170,26 +170,31 @@ describe('CalendarPage', () => {
    */
   it('deve ser acessível (sem violações de a11y)', async () => {
     const { container } = renderWithProviders();
-    // Aguarda o 'fetchData' (chamadas API) e o 'useEffect' (auth) terminarem
-    await screen.findByText('Saldo 2025:');
+
+    // Aguarda a ÚLTIMA atualização de estado (setLoading(false))
+    await waitFor(() => {
+      expect(screen.queryByText('Carregando...')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Saldo 2025:')).toBeInTheDocument(); // Verifica se o saldo está lá
     expect(await axe(container)).toHaveNoViolations();
   });
-
+  
   /**
    * Valida a renderização inicial da página,
    * garantindo que os saldos (Atual e Futuro) são exibidos.
    */
   it('deve renderizar o calendário e os saldos de diárias (Atual e Futuro)', async () => {
     renderWithProviders();
-    
+
     // Aguarda o 'fetchData' terminar
     await screen.findByText('Saldo 2025:');
-    
+
     // Verifica se os saldos do mock (10 e 20) estão na tela
     expect(screen.getByText('10')).toBeInTheDocument(); // Saldo Atual
     expect(screen.getByText('Saldo 2026:')).toBeInTheDocument();
     expect(screen.getByText('20')).toBeInTheDocument(); // Saldo Futuro
-    
+
     // Verifica se o calendário mockado foi renderizado
     expect(screen.getByTestId('mock-calendar')).toBeInTheDocument();
   });
@@ -214,9 +219,9 @@ describe('CalendarPage', () => {
     // Act 2: Simula a seleção de datas
     const endDateInput = screen.getByLabelText(/Data de Fim/i);
     await act(async () => {
-        fireEvent.change(endDateInput, { target: { value: '2025-10-15' } });
+      fireEvent.change(endDateInput, { target: { value: '2025-10-15' } });
     });
-    
+
     // Avança para o Passo 2
     await act(async () => {
       fireEvent.click(nextButtonStep1);
@@ -232,10 +237,10 @@ describe('CalendarPage', () => {
     // Assert 3: No Passo 3, verifica o resumo
     expect(await screen.findByText('Confirme sua Reserva')).toBeInTheDocument();
     expect(screen.getByText('10/10/2025')).toBeInTheDocument(); // Data Início
-    
+
     // Valida se o saldo correto (Atual) está sendo exibido
     expect(screen.getByText('Saldo 2025 (Atual):')).toBeInTheDocument();
-    expect(screen.getByText('10 dias')).toBeInTheDocument(); 
+    expect(screen.getByText('10 dias')).toBeInTheDocument();
 
     // Act 4: Clica em Confirmar
     await act(async () => {
@@ -271,9 +276,9 @@ describe('CalendarPage', () => {
     // Act 2: Seleciona data de fim
     const endDateInput = screen.getByLabelText(/Data de Fim/i);
     await act(async () => {
-        fireEvent.change(endDateInput, { target: { value: '2026-02-18' } });
+      fireEvent.change(endDateInput, { target: { value: '2026-02-18' } });
     });
-    
+
     // Avança para o Passo 2
     await act(async () => {
       fireEvent.click(nextButtonStep1);
