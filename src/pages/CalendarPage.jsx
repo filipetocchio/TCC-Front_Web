@@ -168,6 +168,7 @@ const CalendarPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [currentRange, setCurrentRange] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   /**
@@ -223,8 +224,41 @@ const CalendarPage = () => {
 
   // Efeito para buscar os dados na montagem inicial do componente.
   useEffect(() => {
-    fetchData({});
+    // Define o range inicial (mês atual) e busca os dados
+    const now = new Date();
+    const initialRange = {
+      start: new Date(now.getFullYear(), now.getMonth(), 1),
+      end: new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    };
+    setCurrentRange(initialRange);
+    fetchData(initialRange);
   }, [fetchData]);
+
+  /**
+   * Manipulador para quando o range do calendário muda (ex: mudar de mês).
+   * Armazena o novo range no estado e busca os dados para esse range.
+   */
+  const handleRangeChange = useCallback((rangeInfo) => {
+    let viewInfo;
+
+    // O BigCalendar pode retornar um objeto (mês) ou um array (semana/dia)
+    if (rangeInfo.start && rangeInfo.end) {
+      viewInfo = { start: rangeInfo.start, end: rangeInfo.end };
+    } else if (Array.isArray(rangeInfo)) {
+      viewInfo = { start: rangeInfo[0], end: rangeInfo[rangeInfo.length - 1] };
+    } else {
+      // Fallback para garantir que temos um range
+      const newDate = new Date();
+      viewInfo = {
+        start: new Date(newDate.getFullYear(), newDate.getMonth(), 1),
+        end: new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0)
+      };
+    }
+
+    setCurrentRange(viewInfo);
+    fetchData(viewInfo);
+  }, [fetchData]);
+
 
   /**
    * Manipulador para seleção de datas no calendário (criação de reserva).
@@ -275,12 +309,23 @@ const CalendarPage = () => {
     navigate(paths.detalhesReserva.replace(':id', reservationId));
   }, [navigate]);
 
+  /**
+   * Callback para o modal de reserva.
+   * Re-busca os dados do calendário para o range ATUAL
+   * após uma reserva ser criada com sucesso.
+   */
+  const handleReservationSuccess = useCallback(() => {
+    if (currentRange) {
+      fetchData(currentRange);
+    }
+  }, [fetchData, currentRange]);
+
   // --- Renderização do Componente ---
   return (
     <>
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar variant="property" collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        
+
         <main className={clsx("flex-1 p-6 transition-all duration-300", sidebarCollapsed ? 'ml-20' : 'ml-64')}>
           <div className="max-w-7xl mx-auto">
 
@@ -297,7 +342,7 @@ const CalendarPage = () => {
 
             {/* Conteúdo Principal (Grid) */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              
+
               {/* Coluna Principal: Calendário */}
               <div className="lg:col-span-3 bg-white rounded-2xl shadow-md p-6">
                 <BigCalendar
@@ -322,7 +367,7 @@ const CalendarPage = () => {
                   }}
                   culture='pt-BR'
                   selectable
-                  onRangeChange={fetchData}
+                  onRangeChange={handleRangeChange}
                   onSelectSlot={handleSelectSlot}
                   onSelectEvent={handleSelectEvent}
                   components={{ toolbar: CustomToolbar }}
@@ -330,7 +375,7 @@ const CalendarPage = () => {
                   slotPropGetter={() => ({ className: 'hoverable-slot' })}
                 />
               </div>
-              
+
               {/* Coluna Lateral: Informações e Ações Rápidas */}
               <div className="lg:col-span-1 space-y-4">
                 <UserBalanceCard saldoAtual={currentUserData.saldoDiariasAtual} saldoFuturo={currentUserData.saldoDiariasFuturo} />
@@ -355,9 +400,9 @@ const CalendarPage = () => {
         initialDate={selectedDate}
         propertyRules={{ minStay: property?.duracaoMinimaEstadia, maxStay: property?.duracaoMaximaEstadia }}
         propertyId={Number(propertyId)}
-        saldoDiariasAtual={currentUserData.saldoDiariasAtual} 
+        saldoDiariasAtual={currentUserData.saldoDiariasAtual}
         saldoDiariasFuturo={currentUserData.saldoDiariasFuturo}
-        onReservationCreated={fetchData}
+        onReservationCreated={handleReservationSuccess}
       />
       <RulesHelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </>
