@@ -43,6 +43,15 @@ vi.mock('react-hot-toast', () => ({
   Toaster: () => <div data-testid="mock-toaster" />,
 }));
 
+vi.mock('@/components/layout/Sidebar.jsx', () => ({
+  // O 'default' é necessário por causa do 'import Sidebar from ...'
+  default: (props) => {
+    // Retornamos um componente falso que simplesmente aceita as props
+    // (como 'collapsed') para não quebrar a renderização do CalendarPage.
+    return <div data-testid="mock-sidebar" {...props} />;
+  }
+}));
+
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const mod = await importOriginal();
