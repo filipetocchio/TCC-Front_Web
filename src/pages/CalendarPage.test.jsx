@@ -44,11 +44,10 @@ vi.mock('react-hot-toast', () => ({
 }));
 
 vi.mock('@/components/layout/Sidebar.jsx', () => ({
-  // O 'default' é necessário por causa do 'import Sidebar from ...'
-  default: (props) => {
-    // Retornamos um componente falso que simplesmente aceita as props
-    // (como 'collapsed') para não quebrar a renderização do CalendarPage.
-    return <div data-testid="mock-sidebar" {...props} />;
+  
+  default: ({ collapsed, ...restProps }) => { 
+
+    return <div data-testid="mock-sidebar" {...restProps} />; 
   }
 }));
 
@@ -196,11 +195,8 @@ describe('CalendarPage', () => {
   it('deve renderizar o calendário e os saldos de diárias (Atual e Futuro)', async () => {
     renderWithProviders();
 
-    // Aguarda o 'fetchData' terminar
-    await screen.findByText('Saldo 2025:');
-
     // Verifica se os saldos do mock (10 e 20) estão na tela
-    expect(screen.getByText('10')).toBeInTheDocument(); // Saldo Atual
+    expect(await screen.findByText('10')).toBeInTheDocument(); // Saldo Atual
     expect(screen.getByText('Saldo 2026:')).toBeInTheDocument();
     expect(screen.getByText('20')).toBeInTheDocument(); // Saldo Futuro
 
