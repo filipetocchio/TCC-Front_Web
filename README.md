@@ -173,7 +173,11 @@ O projeto possui um pipeline de Integração Contínua definido em `.github/work
 
 ## 5. Estrutura Detalhada do Projeto
 
-Abaixo está a estrutura completa de todos os 53 arquivos analisados no projeto `src`.
+Abaixo está a estrutura completa de todos os  arquivos analisados no projeto.
+
+## 5. Estrutura Detalhada do Projeto
+
+Abaixo está a estrutura completa do projeto `src`, incluindo os novos arquivos de testes unitários, integração e benchmarks de performance.
 
     TCC-Front_Web/
     │
@@ -191,7 +195,8 @@ Abaixo está a estrutura completa de todos os 53 arquivos analisados no projeto 
     │   │
     │   ├── components/
     │   │   ├── auth/
-    │   │   │   └── LoginForm.jsx          # Formulário e lógica de login
+    │   │   │   ├── LoginForm.jsx          # Formulário e lógica de login
+    │   │   │   └── LoginForm.test.jsx     # [TEST] Testes unitários do formulário de login
     │   │   ├── calendar/
     │   │   │   ├── ChecklistForm.jsx      # Formulário de check-in/out
     │   │   │   ├── ChecklistHistory.jsx   # Visualizador de checklists passados
@@ -221,50 +226,55 @@ Abaixo está a estrutura completa de todos os 53 arquivos analisados no projeto 
     │   │   │   ├── dialog.jsx             # Componente base de Modal/Diálogo
     │   │   │   ├── FormComponents.jsx     # Biblioteca de inputs (InputField, SelectField, etc.)
     │   │   │   ├── Input.jsx              # Componente de input base estilizado
-    │   │   │   └── NotificationComponents.jsx # Sino de notificação e modal
-    │   │   └── ProtectedRoute.jsx       # Guardião de rotas autenticadas
+    │   │   │   ├── NotificationComponents.jsx # Sino de notificação e modal
+    │   │   │   └── ProtectedRoute.jsx     # Guardião de rotas autenticadas
+    │   │   └── ProtectedRoute.test.jsx    # [TEST] Validação de acesso e redirecionamento
     │   │
     │   ├── context/
-    │   │   ├── AuthContext.jsx          # Definição do React Context
-    │   │   └── AuthProvider.jsx         # Provedor com toda a lógica de autenticação
+    │   │   ├── AuthContext.jsx            # Definição do React Context
+    │   │   ├── AuthProvider.jsx           # Provedor com toda a lógica de autenticação
+    │   │   └── AuthProvider.test.jsx      # [TEST] Testes da lógica de sessão e storage
     │   │
     │   ├── hooks/
-    │   │   ├── useAuth.js               # Hook de atalho para o AuthContext
-    │   │   └── useUserProperties.js     # Hook para buscar propriedades do usuário
+    │   │   ├── useAuth.js                 # Hook de atalho para o AuthContext
+    │   │   └── useUserProperties.js       # Hook para buscar propriedades do usuário
     │   │
     │   ├── pages/
-    │   │   ├── AcceptInvitePage.jsx     # Página pública para aceitar convite
-    │   │   ├── CalendarPage.css         # Estilos customizados do BigCalendar
-    │   │   ├── CalendarPage.jsx         # Orquestrador do módulo de Agenda
-    │   │   ├── EditProfile.jsx          # Página de edição de perfil (com corte de foto)
-    │   │   ├── FinancialDashboard.jsx   # Orquestrador do módulo Financeiro
-    │   │   ├── Home.jsx                 # Dashboard principal (lista de propriedades)
-    │   │   ├── LoginPage.jsx            # Página container para o LoginForm
-    │   │   ├── PrivacyPolicyPage.jsx    # Página estática de Política de Privacidade
-    │   │   ├── PropertyDetails.jsx      # Orquestrador dos detalhes da propriedade
-    │   │   ├── PropertyMembersPage.jsx  # Orquestrador do gerenciamento de cotistas
-    │   │   ├── RegisterProperty.jsx     # Página de cadastro de propriedade (com IA)
-    │   │   ├── RegisterUser.jsx         # Página de cadastro de novo usuário
+    │   │   ├── AcceptInvitePage.bench.jsx # [BENCH] Teste de performance da pág. de convite
+    │   │   ├── AcceptInvitePage.jsx       # Página pública para aceitar convite
+    │   │   ├── CalendarPage.css           # Estilos customizados do BigCalendar
+    │   │   ├── CalendarPage.jsx           # Orquestrador do módulo de Agenda
+    │   │   ├── CalendarPage.test.jsx      # [TEST] Teste de integração (Range de datas/Reservas)
+    │   │   ├── EditProfile.jsx            # Página de edição de perfil (com corte de foto)
+    │   │   ├── FinancialDashboard.bench.jsx # [BENCH] Teste de performance do Dashboard
+    │   │   ├── FinancialDashboard.jsx     # Orquestrador do módulo Financeiro
+    │   │   ├── Home.jsx                   # Dashboard principal (lista de propriedades)
+    │   │   ├── LoginPage.jsx              # Página container para o LoginForm
+    │   │   ├── PrivacyPolicyPage.jsx      # Página estática de Política de Privacidade
+    │   │   ├── PropertyDetails.jsx        # Orquestrador dos detalhes da propriedade
+    │   │   ├── PropertyMembersPage.jsx    # Orquestrador do gerenciamento de cotistas
+    │   │   ├── RegisterProperty.jsx       # Página de cadastro de propriedade (com IA)
+    │   │   ├── RegisterUser.jsx           # Página de cadastro de novo usuário
     │   │   ├── ReservationDetailsPage.jsx # Página de detalhes de uma reserva (check-in/out)
-    │   │   └── TermsPage.jsx            # Página estática de Termos de Uso
+    │   │   └── TermsPage.jsx              # Página estática de Termos de Uso
     │   │
     │   ├── routes/
-    │   │   └── paths.js                 # Fonte única da verdade para todas as URLs
+    │   │   └── paths.js                   # Fonte única da verdade para todas as URLs
     │   │
     │   ├── services/
-    │   │   ├── api.js                   # Configuração central do Axios (interceptors)
-    │   │   └── propertyService.js       # Funções de API do módulo de propriedade
+    │   │   ├── api.js                     # Configuração central do Axios (interceptors)
+    │   │   └── propertyService.js         # Funções de API do módulo de propriedade
     │   │
     │   ├── styles/
-    │   │   └── tailwind.css             # Importações base do Tailwind
+    │   │   └── tailwind.css               # Importações base do Tailwind
     │   │
     │   ├── App.css
-    │   ├── App.jsx                      # Componente Raiz (Rotas, Provider, Toaster)
+    │   ├── App.jsx                        # Componente Raiz (Rotas, Provider, Toaster)
     │   ├── index.css
-    │   ├── main.jsx                     # Ponto de entrada da aplicação
-    │   └── setupTests.js                # Configuração do Vitest com jest-dom
+    │   ├── main.jsx                       # Ponto de entrada da aplicação
+    │   └── setupTests.js                  # Configuração do Vitest com jest-dom
     │
-    ├── .env                           # (Exemplo) Arquivo de variáveis de ambiente
+    ├── .env                               # (Exemplo) Arquivo de variáveis de ambiente
     ├── .gitignore
     ├── index.html
     ├── package.json
@@ -408,13 +418,32 @@ Esta seção detalha os fluxos de lógica de negócio mais complexos, essenciais
 
 ---
 
-## 8. Testes
+## 8. Testes e Qualidade de Código
 
-O projeto está configurado com **Vitest** e **React Testing Library**.
+O projeto adota uma cultura de **Engenharia de Software Sólida**, utilizando uma suíte de testes abrangente configurada com **Vitest**, **React Testing Library** e **Vitest Bench**.
 
-* **Configuração:** `vite.config.js` define `environment: 'jsdom'`. `setupTests.js` importa `@testing-library/jest-dom` para adicionar matchers (ex: `.toBeInTheDocument()`).
-* **Testes Implementados:**
-    * **`AcceptInvitePage.test.jsx`:** Testa a renderização condicional da página de convite, mockando a resposta da API e o `AuthContext` para validar os 3 cenários de usuário (logado, não logado/existente, não logado/novo).
+### 8.1. Stack e Configuração
+* **Ambiente:** `jsdom` configurado via `vite.config.js` para simulação fiel do navegador.
+* **Matchers:** `@testing-library/jest-dom` para asserções semânticas de DOM.
+* **Acessibilidade:** `vitest-axe` integrado para garantir conformidade WCAG em todos os componentes de UI.
+* **Performance:** `vitest bench` para monitoramento de regressão de desempenho.
+
+### 8.2. Cobertura de Testes
+
+####  Testes de Unidade e Contexto (Lógica e Segurança)
+Focam no isolamento da lógica de estado e segurança.
+* **`AuthProvider.test.jsx`:** Valida a máquina de estados de autenticação (`login`, `logout`, `restoreSession`). Verifica efeitos colaterais críticos: persistência no `localStorage` e configuração dinâmica de headers de autorização no Axios.
+* **`ProtectedRoute.test.jsx`:** Garante a integridade das rotas privadas, testando redirecionamentos automáticos e renderização condicional baseada no estado de carregamento (`authLoading`).
+
+####  Testes de Integração (Fluxos de Negócio)
+Validam a interação completa entre usuário, componentes e API (mockada).
+* **`CalendarPage.test.jsx`:** Valida regras de negócio complexas de agendamento. Testa especificamente a lógica de débito de saldo de diárias (ano corrente vs. ano futuro) e a estabilidade da renderização assíncrona.
+* **`LoginForm.test.jsx`:** Cobre o fluxo "end-to-end" de login simulado: validação de formulário HTML5, tratamento de erros 401 da API e navegação pós-sucesso.
+* **`AcceptInvitePage.test.jsx`:** Valida os múltiplos estados da UI de convite (Loading, Token Inválido, Usuário Novo vs. Existente), garantindo que o CTA correto seja exibido.
+
+####  Benchmarks de Performance
+Testes dedicados para garantir a responsividade de telas críticas.
+* **`FinancialDashboard.bench.jsx`** e **`AcceptInvitePage.bench.jsx`:** Simulam cenários de "pior caso" (usuário logado com carga de dados) para medir operações por segundo (ops/sec) e latência de renderização, utilizando mocks leves para bibliotecas pesadas (como `recharts`).
 
 ---
 
